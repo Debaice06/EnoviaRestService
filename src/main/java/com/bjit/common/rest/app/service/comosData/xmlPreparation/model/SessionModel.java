@@ -42,6 +42,10 @@ public class SessionModel {
     @Setter
     private Boolean doNotGenerateLogicalItemsXMLFile;
 
+    @Getter
+    @Setter
+    private String projectSpace;
+
     public Context getContext(){
         return Optional.ofNullable(this.context).orElseGet(() -> {
             try {

@@ -115,7 +115,12 @@ public class EmailSendUtil {
             } else {
                 List<String> mailListForAnItem = emailSender.initializeResultSender(context, businessObject, item);
                 ResponseResult responseResult = new ResponseResult();
-                processedItemsForEmail = "An Error Occured.";
+                if (item.getMessage() == null) {
+                    processedItemsForEmail = "An Error Occured.";
+                } else {
+                    processedItemsForEmail = item.getMessage();
+                }
+
                 responseResult.setResultText(processedItemsForEmail);
                 responseResult.setSuccessful(false);
                 responseResult.setItem(itemName);

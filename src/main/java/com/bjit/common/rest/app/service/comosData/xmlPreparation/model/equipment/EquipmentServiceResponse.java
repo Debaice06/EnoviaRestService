@@ -6,16 +6,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-//@Builder
 @Getter
 @Setter
 public class EquipmentServiceResponse extends ComosCommonResponse {
     private EquipmentData data;
-//    public Data getData() {
-//        return data;
-//    }
-//
-//    public void setData(Data data) {
-//        this.data = data;
-//    }
 }

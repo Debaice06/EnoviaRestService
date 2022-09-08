@@ -163,3 +163,9 @@ li.chooser button.btn span.fonticon-search {
 .ds-detail-display.ds-dialog {
     z-index: auto !important;
 }
+
+.disabled {
+    pointer-events: none;
+    background: #e2e4e3;
+    border: 1px solid darkgray !important;
+}

@@ -86,7 +86,9 @@ public class RnPBackgroundProcessImpl implements IBackGroundProcessor<File>, IRe
         if (!rnpModel.getResponseBomData().isEmpty()) {
             JasperReportGenerator jasperReportGenerator = new JasperReportGenerator();
             try {
+
                 Map<String, String> responseData = jasperReportGenerator.generateReport(rnpModel.getResponseBomData(), rnpModel.getRootItemParams(), rnpModel.getDeliveryParams(), rnpModel.getFormat(), rnpModel.getLang(), rnpModel.getRequestId(), Boolean.parseBoolean(rnpModel.getIsSummaryRequired()), rnpModel.getType(), rnpModel.getIsMBOMReport());
+
                 String outputFile = responseData.get("filePath");
                 if (!outputFile.isEmpty()) {
                     rnpModel.setIsFileGenerated(true);

@@ -24,48 +24,18 @@ import matrix.db.Context;
  *
  * @author BJIT
  */
-public class LNResponseServiceImpl implements LNResponseService {
+public class LNResponseServiceImpl  {
 
     private static final org.apache.log4j.Logger LN_RESPONSE_SERVICE_IMPL = org.apache.log4j.Logger.getLogger(LNResponseServiceImpl.class);
     public static final String SUCCESSFUL_ITEM_LIST = "SuccessfulItemList";
     public static final String FAILED_ITEM_LIST = "FailedItemList";
     LNRequestUtil lNRequestUtil = new LNRequestUtil();
     public boolean isService = true;
+    public boolean hasBOM = true;
     LNResponseMessageUtil lNResponseMessageUtil = new LNResponseMessageUtil();
 //
 
-    public Map<String, ResponseMessageFormaterBean> ResponseList(Context context, Item item, Map<String, String> itemResultMap, Iterator<Item> iterator, List<Item> expandedBOM) {
-        Set<ResponseMessageFormaterBean> errorItemList = new HashSet<>();
-        Set<ResponseMessageFormaterBean> successItemList = new HashSet<>();
-        Map<String, ResponseMessageFormaterBean> transferResultMap = new HashMap<>();
-        LNTransferAction lnTransferAction = new LNTransferAction();
-        String errorType = itemResultMap.get(item.getTnr().getName().toUpperCase());
-        LN_RESPONSE_SERVICE_IMPL.info("BOM Type Service Call" + errorType );
-        if (expandedBOM.isEmpty() || !expandedBOM.contains(item)) {
-            LN_RESPONSE_SERVICE_IMPL.info("Empty Level Item call for BOM Transfer Service .");
-            transferResultMap = lNResponseMessageUtil.getResponseMessageFormatter(item, itemResultMap, "item");
-            iterator.remove();
-        } else if (expandedBOM.size() > 0 && expandedBOM.contains(item)) {
-            LN_RESPONSE_SERVICE_IMPL.info("BOM Transfer Service Calling ....");
-            try {
-                ResponseMessageFormaterBean validationErrorMessageFormatter = LNRequestUtil.validateRequestedItem(context, item);
-                if (validationErrorMessageFormatter != null) {
-                    errorItemList.add(validationErrorMessageFormatter);
-                    // continue;
-                }
-                itemResultMap = lnTransferAction.initiateTransferToLN(context, item, TransferActionType.BOM, isService);
-                transferResultMap = lNResponseMessageUtil.getResponseMessageFormatter(item, itemResultMap, "bom");
 
-            } catch (Exception ex) {
-                transferResultMap = lNResponseMessageUtil.getResponseMessageFormatter(item,"bom", ex);
-                LN_RESPONSE_SERVICE_IMPL.trace(ex);
-                LN_RESPONSE_SERVICE_IMPL.error(ex);
-            }
-            iterator.remove();
-        }
-
-        return transferResultMap;
-    }
 
     public Map<LNResponseMessageFormater, String> finalResponseListMap(Map<String, LNResponseMessageFormater> transferResultMap) {
 

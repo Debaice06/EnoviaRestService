@@ -1,5 +1,7 @@
 package com.bjit.common.rest.app.service.comosData.xmlPreparation.subtasksProcessors.factoryImpls;
 
+import com.bjit.common.rest.app.service.comosData.exceptions.ProjectStructureException;
+import com.bjit.common.rest.app.service.comosData.exceptions.SubtasksStructureException;
 import com.bjit.common.rest.app.service.comosData.project_structure.model.ComosProjectSpaceBean;
 import com.bjit.common.rest.app.service.comosData.project_structure.services.ITaskImportProcess;
 import com.bjit.common.rest.app.service.comosData.xmlPreparation.consumer.ntlmAuth.IComosData;
@@ -23,6 +25,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.RequestScope;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Log4j
 @Component
@@ -57,16 +60,17 @@ public class SubtasksPreparation implements IStructurePreparation<ResponseMessag
     @Qualifier("SubtasksModelConverter")
     SubtasksModelConverter subtasksModelConverter;
 
+    @Override
     public ResponseMessageFormaterBean prepareStructure(SubtasksRequestData subtasksRequestData) throws IOException {
         try {
             SubtasksServiceResponse subtasksServiceResponse = getServiceData(subtasksRequestData);
             comosRuntimeDataBuilder.build();
             ComosProjectSpaceBean comosProjectSpaceBean = subtasksModelConverter.convert(subtasksServiceResponse);
-            System.out.println("#############################################");
-            System.out.println("#############################################");
-            System.out.println(json.serialize(comosProjectSpaceBean));
-            System.out.println("#############################################");
-            System.out.println("#############################################");
+//            System.out.println("#############################################");
+//            System.out.println("#############################################");
+//            System.out.println(json.serialize(comosProjectSpaceBean));
+//            System.out.println("#############################################");
+//            System.out.println("#############################################");
             log.info(comosProjectSpaceBean);
             ResponseMessageFormaterBean responseMessageFormaterBean = null;
             if (comosProjectSpaceBean.getProjectCode() == null) {
@@ -87,10 +91,16 @@ public class SubtasksPreparation implements IStructurePreparation<ResponseMessag
         }
     }
 
+    private void setRuntimeInformation(ResponseMessageFormaterBean responseMessageFormaterBean) {
+        comosRuntimeData.getProjectSpaceData().setTnr(responseMessageFormaterBean.getTnr());
+        comosRuntimeData.getProjectSpaceData().setObjectId(responseMessageFormaterBean.getObjectId());
+    }
+    @Override
     public SubtasksServiceResponse getServiceData(SubtasksRequestData requestData) throws IOException {
         SubtasksServiceResponse subtasksServiceResponse = getSubtasksServiceResponse(requestData);
         return subtasksServiceResponse;
     }
+
 
     private SubtasksServiceResponse getSubtasksServiceResponse(SubtasksRequestData requestData) throws IOException {
         boolean readFromFile = Boolean.parseBoolean(PropertyReader.getProperty("comos.get.json.data.from.file"));
@@ -99,10 +109,7 @@ public class SubtasksPreparation implements IStructurePreparation<ResponseMessag
         return subtasksServiceResponse;
     }
 
-    private void setRuntimeInformation(ResponseMessageFormaterBean responseMessageFormaterBean) {
-        comosRuntimeData.getProjectSpaceData().setTnr(responseMessageFormaterBean.getTnr());
-        comosRuntimeData.getProjectSpaceData().setObjectId(responseMessageFormaterBean.getObjectId());
-    }
+
 
     private SubtasksServiceResponse getSubtasksResponseData(String jsonString) {
         try {
@@ -110,6 +117,9 @@ public class SubtasksPreparation implements IStructurePreparation<ResponseMessag
             builder.serializeNulls();
             Gson gson = builder.create();
             SubtasksServiceResponse serviceResponse = gson.fromJson(jsonString, SubtasksServiceResponse.class);
+
+            Optional.ofNullable(serviceResponse.getData()).orElseThrow(() -> new SubtasksStructureException(serviceResponse.getMessage()));
+
             return serviceResponse;
         } catch (Exception exp) {
             log.error(exp);

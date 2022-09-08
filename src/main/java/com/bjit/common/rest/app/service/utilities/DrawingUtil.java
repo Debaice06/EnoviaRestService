@@ -9,18 +9,18 @@ import com.bjit.ewc18x.utils.MqlQueries;
 import com.bjit.ewc18x.utils.PropertyReader;
 import com.bjit.mapper.mapproject.expand.ExpandObject;
 import com.bjit.mapper.mapproject.expand.ObjectTypesAndRelations;
-import com.bjit.mapper.mapproject.jsonOutput.JsonOutput;
+import matrix.db.BusinessObject;
+import matrix.db.BusinessObjectWithSelect;
+import matrix.db.BusinessObjectWithSelectList;
+import matrix.db.Context;
+import matrix.util.MatrixException;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import matrix.db.BusinessObject;
-import matrix.db.BusinessObjectWithSelect;
-import matrix.db.BusinessObjectWithSelectList;
-import matrix.db.Context;
-import matrix.util.MatrixException;
 
 /**
  *
@@ -33,9 +33,8 @@ public class DrawingUtil {
     private List<String> processCnxTypeListForDrawing = Arrays.asList(PropertyReader.getProperty("item.types.list.for.process.cnx").split(","));
     BusinessObjectWithSelect busWithSel;
 
-    public HashMap fetchDrawingNumber(Context context, BusinessObjectWithSelect busWithSel, String docType, ObjectTypesAndRelations typesAndRelations) throws MatrixException, IOException {
+    public HashMap fetchDrawingNumber(Context context, BusinessObjectWithSelect busWithSel, String docType, String[] attributeArr, ObjectTypesAndRelations typesAndRelations) throws MatrixException, IOException {
 
-        JsonOutput jsonObject = new JsonOutput();
         this.busWithSel = busWithSel;
         expandObject = new ExpandObject();
         //   typesAndRelations = new ObjectTypesAndRelations();
@@ -116,7 +115,7 @@ public class DrawingUtil {
             }
             int drawingCount = 1;
             if (!NullOrEmptyChecker.isNullOrEmpty(docType)) {
-                String[] attributeArr = docType.split(",");
+//                String[] attributeArr = docType.split(",");
                 if (attributeArr.length == 1) {
                     for (BusinessObjectWithSelect drawingBusWithSelect : drawingList) {
                         if (drawingBusWithSelect.getSelectData("attribute[DOC_DocDistributionList.DOC_DocDistributionList]").equals(attributeArr[0])) {
@@ -144,10 +143,10 @@ public class DrawingUtil {
                         }
                     }
                 } else {
-
                     //VSIX-5394 Production type drawing is missing while selecting multiple drawing in Himeli report
                     //prioritylist: production, production and customer, customer
-                    attributeArr = jsonObject.getPriorityDrawingTypeList(attributeArr);
+//                    JsonOutput jsonObject = new JsonOutput();
+//                    attributeArr = jsonObject.getPriorityDrawingTypeList(attributeArr);
                     for (String attributeArrStr : attributeArr) {
                         if (NullOrEmptyChecker.isNullOrEmpty(drawingNumber)) {
                             for (int i = 0; i < drawingList.size(); i++) {

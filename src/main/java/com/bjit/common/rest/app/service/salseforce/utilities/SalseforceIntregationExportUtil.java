@@ -5,12 +5,14 @@
  */
 package com.bjit.common.rest.app.service.salseforce.utilities;
 
+import com.bjit.common.rest.app.service.context.CreateContext;
 import com.bjit.common.rest.app.service.controller.salesforce.intregation.SalesforceIntregationController;
 import com.bjit.ewc18x.utils.PropertyReader;
 import java.io.File;
 import java.io.IOException;
 import com.bjit.ex.integration.model.webservice.Item;
 import com.bjit.context.ContextGeneration;
+import com.bjit.mapper.mapproject.util.Constants;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
@@ -20,6 +22,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +51,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -174,8 +180,8 @@ public class SalseforceIntregationExportUtil {
      * @param jsonObject is the String formatted JSON which will be transferred
      * @return a map containing API JSON response and HTTP status code
      */
-    public Map<JSONObject, HttpStatus> callingSalesforceIntregationAPI(String token, String jsonObject) throws IOException {
-        Map<JSONObject, HttpStatus> response = new HashMap<>();
+    public Map<JSONArray, HttpStatus> callingSalesforceIntregationAPI(String token, String jsonObject) throws IOException {
+        Map<JSONArray, HttpStatus> response = new HashMap<>();
         HttpStatus statusCode = null;
         String tokenGenerationResponse = null;
         RestTemplate restTemplate = new RestTemplate();
@@ -190,22 +196,42 @@ public class SalseforceIntregationExportUtil {
             statusCode = out.getStatusCode();
             tokenGenerationResponse = out.getBody();
             LOGGER.debug("Response: " + tokenGenerationResponse);
+        } catch (HttpServerErrorException ex) {
+            LOGGER.error("Exception:" + ex.getResponseBodyAsString(), ex);
+            response.put(new JSONArray(ex.getResponseBodyAsString()), ex.getStatusCode());
+            return response;
         } catch (RestClientException ex) {
             LOGGER.error("Exception:" + ex.getMessage(), ex);
+            response.put(new JSONArray(ex.getMessage()), HttpStatus.NOT_FOUND);
+            return response;
         }
-        response.put(new JSONObject(tokenGenerationResponse), statusCode);
+        response.put(new JSONArray(tokenGenerationResponse), statusCode);
         //response.put(new JSONObject(tokenGenerationResponse), HttpStatus.SERVICE_UNAVAILABLE);
 
         return response;
     }
+    
+    public Map<String, String> itemsFromApiResponse(Map<JSONArray, HttpStatus> input){
+        Map<String, String> failedItemMap = new HashMap();
+        for (Map.Entry<JSONArray, HttpStatus> entry : input.entrySet()) {
+            JSONArray jsonarray = entry.getKey();
+            for (int i = 0; i < jsonarray.length(); i++) {
+                JSONObject explrObject = jsonarray.getJSONObject(i);
+                failedItemMap.put(explrObject.opt("productCode").toString(), explrObject.opt("message").toString());
+            }
+        }
+        return failedItemMap;
+    }
 
-    public String isSalesforceServiceAvailable(Map<JSONObject, HttpStatus> input) {
+    public String isSalesforceServiceAvailable(Map<JSONArray, HttpStatus> input) {
         String responseCode = null;
-        for (Map.Entry<JSONObject, HttpStatus> salesforceResponse : input.entrySet()) {
+        for (Map.Entry<JSONArray, HttpStatus> salesforceResponse : input.entrySet()) {
             if (salesforceResponse.getValue() == HttpStatus.SERVICE_UNAVAILABLE) {
                 responseCode = "503";
             } else if (salesforceResponse.getValue() == HttpStatus.OK) {
                 responseCode = "200";
+            } else if (salesforceResponse.getValue() == HttpStatus.INTERNAL_SERVER_ERROR) {
+                responseCode = "500";
             }
         }
         return responseCode;
@@ -273,7 +299,7 @@ public class SalseforceIntregationExportUtil {
                     explrObject.remove("Marketing Name");
                     explrObject.put("Export restriction", explrObject.get("Export restrictions"));
                     explrObject.remove("Export restrictions");
-                    
+
                     mainJsonArray.put(objectIndex, explrObject);
                     objectIndex++;
                 }
@@ -314,6 +340,7 @@ public class SalseforceIntregationExportUtil {
         if (dir.exists() && dir.isDirectory()) {
             File[] files = dir.listFiles((d, name) -> name.endsWith(".xml"));
             if (files != null) {
+                Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
                 for (Integer fileIndex = 0; fileIndex < files.length; fileIndex++) {
                     ItemInfo itemInfo = jaxbXmlFileToObject(files[fileIndex].getPath());
                     itemMap.put(files[fileIndex].getName(), itemInfo);
@@ -488,9 +515,10 @@ public class SalseforceIntregationExportUtil {
         Context context = null;
         BusinessObject businessObject = null;
         try {
-            context = ContextGeneration.createContext();
+            context = getContext();
             businessObject = new BusinessObject(itemInfo.getId());
         } catch (Exception ex) {
+            LOGGER.info(ex.getMessage());
         }
         Item item = new Item();
         Map<String, String> itemMap = new HashMap();
@@ -513,4 +541,19 @@ public class SalseforceIntregationExportUtil {
         return accessToken;
     }
 
+    private Context getContext() {
+        Context context = null;
+        try {
+            CreateContext createContext = new CreateContext();
+
+            context = createContext.getAdminContext();
+            if (!context.isConnected()) {
+                throw new Exception(Constants.CONTEXT_EXCEPTION);
+            }
+        } catch (Exception exp) {
+            LOGGER.error("Report generation error: " + exp.getMessage());
+            throw new RuntimeException(exp);
+        }
+        return context;
+    }
 }

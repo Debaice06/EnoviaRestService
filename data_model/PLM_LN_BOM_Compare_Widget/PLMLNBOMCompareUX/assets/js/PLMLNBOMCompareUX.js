@@ -158,7 +158,7 @@ define("VALMET/PLMLNBOMCompareUX/PLMLNBOMCompareUX", ["DS/ENO6WPlugins/jQuery", 
             var bomExpandLevelPref = {
                 type: "range",
                 name: "bomExpandLevel",
-                label: "Maximum Expand Limit",
+                label: "BOM Expand Level",
                 defaultValue: widget.getValue("bomExpandLevel") || 5,
                 min: 1,
                 max: 99,
@@ -1267,7 +1267,10 @@ define("VALMET/PLMLNBOMCompareUX/PLMLNBOMCompareUX", ["DS/ENO6WPlugins/jQuery", 
                                             if (rejectData.systemErrors[0] === "LN service returned null.") {
                                                 console.log(rejectData.systemErrors[0]);
                                                 alert("BOM is not transferred to LN");
-                                            }
+                                            }else if(rejectData.systemErrors[0] === "Object Not Found in Enovia."){
+                                                console.log(rejectData.systemErrors[0]);
+                                                alert("Object Not Found in Enovia");
+                                            }                   
                                         }
                                     }
                                 }
@@ -1476,16 +1479,23 @@ define("VALMET/PLMLNBOMCompareUX/PLMLNBOMCompareUX", ["DS/ENO6WPlugins/jQuery", 
                     url: "/resources/v2/e6w/service/ObjectInfo/" + ObjectID + "?$fields=objectId",
                     callback: function(E) {
                         var D = UWA.is(E, "object") ? E : JSON.parse(E);
-                        if (D.data[0].dataelements.objectId) {
-                            console.log("%cCalled Item Info Service. Fetching Item Properties.", "color: #f3e257");
-                            console.info("%cSelected Object Properties: ", "color: #6ef5ee");
-                            console.info("%cType : " + D.data[0].type, "color: #6ef5ee");
-                            console.info("%cName : " + D.data[0].dataelements.name, "color: #6ef5ee");
-                            console.info("%cRevision : " + D.data[0].dataelements.revision, "color: #6ef5ee");
-                            var tnr = { "type": D.data[0].type, "name": D.data[0].dataelements.name, "revision": D.data[0].dataelements.revision };
-                            reseolveFunction(tnr);
-                        } else {
-                            rejectFunction("Object Info service error not found");
+                        if(D.error) {                    
+                            console.log("Object Not Found in Enovia");
+                            alert("Object Not Found in Enovia");
+                            Mask.unmask(widget.getElement("#compare-content"));
+                    }  
+                    else{
+                    if (D.data[0].dataelements.objectId) {
+                        console.log("%cCalled Item Info Service. Fetching Item Properties.", "color: #f3e257");
+                        console.info("%cSelected Object Properties: ", "color: #6ef5ee");
+                        console.info("%cType : " + D.data[0].type, "color: #6ef5ee");
+                        console.info("%cName : " + D.data[0].dataelements.name, "color: #6ef5ee");
+                        console.info("%cRevision : " + D.data[0].dataelements.revision, "color: #6ef5ee");
+                        var tnr = { "type": D.data[0].type, "name": D.data[0].dataelements.name, "revision": D.data[0].dataelements.revision };
+                        reseolveFunction(tnr);
+                    } else {
+                        rejectFunction("Object Info service error not found");
+                    }
                         }
                     }
                 });

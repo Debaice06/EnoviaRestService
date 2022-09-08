@@ -18,6 +18,15 @@
                     <is_required></is_required>
                 </attribute>
                 <attribute>
+                    <source_name>Created From</source_name>
+                    <destination_name>PLMReference.V_fromExternalID</destination_name>
+                    <data-type>String</data-type>
+                    <data-format></data-format>
+                    <description></description>
+                    <data_length></data_length>
+                    <is_required></is_required>
+                </attribute>
+                <attribute>
                     <source_name>status</source_name>
                     <destination_name>current</destination_name>
                     <values>

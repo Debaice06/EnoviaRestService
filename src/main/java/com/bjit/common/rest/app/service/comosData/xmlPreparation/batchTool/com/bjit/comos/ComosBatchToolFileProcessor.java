@@ -11,10 +11,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @Component
-public class FileProcessor {
+public class ComosBatchToolFileProcessor {
     @Autowired
     Environment env;
-    private static final Logger FILE_PROCESSOR_LOGGER = Logger.getLogger(FileProcessor.class);
+    private static final Logger FILE_PROCESSOR_LOGGER = Logger.getLogger(ComosBatchToolFileProcessor.class);
     public void moveToFolder(String sourceAbsoluteDirectory, String movingFolderName){
         String fileName = sourceAbsoluteDirectory.substring(sourceAbsoluteDirectory.lastIndexOf("\\")+1);
         String movingFolder = "";

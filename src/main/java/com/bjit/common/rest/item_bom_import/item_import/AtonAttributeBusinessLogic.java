@@ -84,7 +84,7 @@ public class AtonAttributeBusinessLogic extends AttributeBusinessLogic {
         return objectAttributeMap;
     }
 
-    public HashMap<String, String> createAssemblyAttributeBusinessLogic(
+    public HashMap<String, String> updateItemForAttributeBusinessLogic(
             CreateObjectBean createObjectBean, ItemImportMapping mapper,
             HashMap<String, String> objectAttributeMap,
             HashMap<String, String> newObjectAttributeMap) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException
@@ -192,11 +192,11 @@ public class AtonAttributeBusinessLogic extends AttributeBusinessLogic {
                                     }
                                 }
                                 if (!rangeUpdated) {
-                                    if (NullOrEmptyChecker.isNullOrEmpty(defaultValue)) {
+                                    if (!NullOrEmptyChecker.isNullOrEmpty(defaultValue)) {
+                                        attributeValue = defaultValue;
+                                    } else {
                                         String errorMessage = MessageFormat.format(PropertyReader.getProperty("unsupported.value.exception"), "'" + attributeValue + "'", "'" + sourceName + "'");
                                         throw new RuntimeException(errorMessage);
-                                    } else {
-                                        attributeValue = defaultValue;
                                     }
                                 }
                             }
@@ -241,13 +241,11 @@ public class AtonAttributeBusinessLogic extends AttributeBusinessLogic {
                     }
 
                     newObjectAttributeMap.put(destinationName, attributeValue);
-                } else {
-                    newObjectAttributeMap.put(destinationName, defaultValue);
                 }
             });
         });
 
-        processOwnerGroup(newObjectAttributeMap);
+        updateOwnerGroup(newObjectAttributeMap);
 
         objectAttributeMap.clear();
         objectAttributeMap.putAll(newObjectAttributeMap);

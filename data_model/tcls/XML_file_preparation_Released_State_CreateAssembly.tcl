@@ -69,7 +69,7 @@ eval {
 	
 	mql modify policy "VPLM_SMB_Definition"\
     state IN_WORK remove trigger promote action\
-    add trigger promote action emxTriggerManagerBase  input "StateChangeTrigger CustomEnoviaCPQTransferTrigger"
+    add trigger promote action emxTriggerManagerBase  input "StateChangeTrigger"
 
         mql modify policy "VPLM_SMB_Definition"\
     state FROZEN remove trigger promote action\
@@ -78,7 +78,7 @@ eval {
         #only for DELI Type. it is temporary. 
         mql modify policy "VPLM_SMB_Definition"\
     state RELEASED remove trigger promote action\
-    add trigger promote action emxTriggerManagerBase  input "StateChangeTrigger"
+    add trigger promote action emxTriggerManagerBase  input "StateChangeTrigger CustomEnoviaCPQTransferTrigger"
 	
 	puts "Trigger addition done !!!"
 	writeLog $fp_LogFile "Trigger addition done !!!"

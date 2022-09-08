@@ -5,6 +5,7 @@
  */
 package com.bjit.common.rest.app.service.controller.comparison;
 
+import com.bjit.common.rest.app.service.context.CreateContext;
 import com.bjit.common.rest.app.service.dataGatherers.EnoviaPDMStructureFetch;
 import com.bjit.common.rest.app.service.dataGatherers.PDMStructureFetch;
 import com.bjit.common.rest.app.service.model.BOMCompareRespnose.BOMCompareResponse;
@@ -33,6 +34,11 @@ import java.util.ArrayList;
 //import com.bjit.compareBOM.MultiLevelBomDataModel.PDMItem;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
+import matrix.db.Attribute;
+import matrix.db.BusinessObject;
+import matrix.db.Context;
+import matrix.util.MatrixException;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -47,7 +53,6 @@ import org.springframework.http.ResponseEntity;
 @RequestMapping(path = "/compareBOM")
 public class EnoviaPDMBOMComparison {
 
-   
     private EnoviaItem enoviaRootItem;
     private PDMItem pdmRootItem;
     HashMap<String, Integer> bomIndexTracker;
@@ -80,16 +85,40 @@ public class EnoviaPDMBOMComparison {
         String drwType = drawingType;
         bomCompareResponse.getBOM().clear();
         if (Float.parseFloat(tnr.getRevision()) % 1.0 == 0) {
-            enoviaRevision =getRevision(Float.parseFloat(tnr.getRevision()),true);
+            enoviaRevision = getRevision(Float.parseFloat(tnr.getRevision()), true);
             pdmRevision = tnr.getRevision();
         } else {
-            pdmRevision =getRevision(Float.parseFloat(tnr.getRevision()),false);
+            pdmRevision = getRevision(Float.parseFloat(tnr.getRevision()), false);
             enoviaRevision = tnr.getRevision();
+        }
+
+        CreateContext createContext = new CreateContext();
+        Context context = null;
+        try {
+            context = createContext.getAdminContext();
+            BusinessObject businessObject = new BusinessObject(tnr.getType(), tnr.getName(), tnr.getRevision(), "vplm");
+            Attribute attributeValues = businessObject.getAttributeValues(context, "MBOM_MBOMPDM.MBOM_Mastership");
+            String mastershipAttr = attributeValues.getValue();
+            context.close();
+            if (!mastershipAttr.equalsIgnoreCase("PDM")) {
+                String errorMessage = "PDM service returned null.";
+                IResponse responseBuilder = new CustomResponseBuilder();
+                String buildResponse = responseBuilder
+                        .addErrorMessage(errorMessage)
+                        .setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED)
+                        .buildResponse();
+                return new ResponseEntity<>(buildResponse, HttpStatus.NOT_ACCEPTABLE); 
+                               
+            }
+        } catch (MatrixException ex) {
+            BOM_COMPARISON_LOGGER.error(ex.getMessage());
+        } catch (Exception ex) {
+            BOM_COMPARISON_LOGGER.error(ex.getMessage());
         }
 
         String relation = Constant.DEFAULT_RELATIONSHIP;
         PDMEnoviaV6Conversion pdmEnoviaV6Conversion = new PDMEnoviaV6Conversion();
-        CompletableFuture<Object> enoviaServiceFuture = CompletableFuture.supplyAsync(() -> EnoviaPDMStructureFetch.getEnoviaStructure(tnr.getType(), tnr.getName(), enoviaRevision, level, attributes, drwType,true));
+        CompletableFuture<Object> enoviaServiceFuture = CompletableFuture.supplyAsync(() -> EnoviaPDMStructureFetch.getEnoviaStructure(tnr.getType(), tnr.getName(), enoviaRevision, level, attributes, drwType, true));
         String pdmString = pdmEnoviaV6Conversion.conversion(tnr.getType(), tnr.getName(), pdmRevision, relation, level);
         CompletableFuture<Object> pdmServiceFuture = CompletableFuture.supplyAsync(() -> PDMStructureFetch.getPDMStructure(pdmString));
 
@@ -338,7 +367,7 @@ public class EnoviaPDMBOMComparison {
             Float revision = rev + (float) 1.1;
             return String.valueOf(revision);
         } else {
-            int revision = (int)Math.round(rev)/1 - 1;
+            int revision = (int) Math.round(rev) / 1 - 1;
             return "0" + String.valueOf(revision);
         }
     }

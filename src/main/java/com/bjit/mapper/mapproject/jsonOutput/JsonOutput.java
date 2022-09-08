@@ -11,36 +11,13 @@ import com.bjit.common.rest.app.service.utilities.CommonPropertyReader;
 import com.bjit.common.rest.app.service.utilities.CommonUtilities;
 import com.bjit.common.rest.app.service.utilities.DrawingUtil;
 import com.bjit.common.rest.app.service.utilities.NullOrEmptyChecker;
+import com.bjit.ewc18x.model.Drawing;
 import com.bjit.ewc18x.utils.MqlQueries;
 import com.bjit.ewc18x.utils.PropertyReader;
-import com.bjit.ewc18x.model.Drawing;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import com.bjit.ex.integration.transfer.actions.utilities.BusinessObjectUtils;
 import com.bjit.mapper.mapproject.expand.ExpandObject;
 import com.bjit.mapper.mapproject.expand.ObjectTypesAndRelations;
 import com.bjit.mapper.mapproject.util.CommonUtil.ThrowingConsumer;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.net.MalformedURLException;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.TreeMap;
-import com.bjit.ex.integration.transfer.actions.utilities.BusinessObjectUtils;
-import java.io.File;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.logging.Level;
 import matrix.db.BusinessObject;
 import matrix.db.BusinessObjectWithSelect;
 import matrix.db.BusinessObjectWithSelectList;
@@ -51,6 +28,27 @@ import matrix.db.RelationshipWithSelectItr;
 import matrix.db.RelationshipWithSelectList;
 import matrix.util.MatrixException;
 import org.apache.log4j.Logger;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.net.MalformedURLException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * @author TAREQ SEFATI
@@ -77,6 +75,7 @@ public class JsonOutput {
     protected HashMap<String, HashMap<String, String>> summaryMap;
     protected HashMap<String, HashMap<String, String>> singleLevelSummaryMap;
     protected List<HashMap<String, String>> summaryResultList;
+    protected List<HashMap<String, String>> summarySingleResultList;
     protected Set<String> summaryTemp;
     protected boolean isDrawingDataRequired;
     protected HashMap<String, List<Map<String, String>>> drawingDataHolderMap;
@@ -144,6 +143,7 @@ public class JsonOutput {
         summaryMap = new LinkedHashMap<String, HashMap<String, String>>();
         singleLevelSummaryMap = new LinkedHashMap<String, HashMap<String, String>>();
         summaryResultList = new ArrayList<HashMap<String, String>>();
+        summarySingleResultList = new ArrayList<HashMap<String, String>>();
         summaryTemp = new HashSet<String>();
         typesAndRelations = new ObjectTypesAndRelations();
         typeSelectablesWithOutputName = typesAndRelations.getTypeSelectablesWithOutputName();
@@ -202,6 +202,7 @@ public class JsonOutput {
         singleLevelSummaryMap = new LinkedHashMap<String, HashMap<String, String>>();
         summaryTemp = new HashSet<String>();
         summaryResultList = new ArrayList<HashMap<String, String>>();
+        summarySingleResultList = new ArrayList<HashMap<String, String>>();
         typesAndRelations = new ObjectTypesAndRelations(mapsAbsoluteDirectory);
         typeSelectablesWithOutputName = typesAndRelations.getTypeSelectablesWithOutputName();
         relationSelectablesWithOutputName = typesAndRelations.getRelationSelectablesWithOutputName();
@@ -402,21 +403,21 @@ public class JsonOutput {
             }
         });
 
-        flattenStructure(responseBOMList.get(0), 0);
+        flattenStructure(responseBOMList.get(0), 0, docType);
         addGTSTitleForAllItems(isTitleRequired);
         ReportResults results = new ReportResults();
         results.setResults(reportResultsMap);
         return results;
     }
 
-    protected void flattenStructure(Object itemData, int level) {
+    protected void flattenStructure(Object itemData, int level, String docType) {
         HashMap<String, Object> itemDataMap = (HashMap) itemData;
         ArrayList<Object> childrenData = (ArrayList<Object>) itemDataMap.get("bomLines");
         int childLevel = level + 1;
         if (level == 0) {
             reportResultsMap.add(itemDataMap);
             updateSummaryReport(level, null, itemDataMap, "");
-            addDrawingToResponse((HashMap) responseBOMList.get(0));
+            addDrawingToResponse((HashMap) responseBOMList.get(0), docType);
             removeSingleExtraAttributes(itemDataMap);
         }
         childrenData.forEach(childData -> {
@@ -430,11 +431,11 @@ public class JsonOutput {
                 childDataMap.put("Qty", trimQtyToPrecisionCeiling(childDataMap.get("Qty").toString()));
             }
             reportResultsMap.add(childDataMap);
-            addDrawingToResponse(childDataMap);
+            addDrawingToResponse(childDataMap, docType);
             updateSummaryReport(childLevel, itemDataMap, childDataMap, "");
             removeSingleExtraAttributes(childDataMap);
             if (bomLineMap.containsKey(childPhysicalId)) {
-                flattenStructure(bomLineMap.get(childPhysicalId), childLevel);
+                flattenStructure(bomLineMap.get(childPhysicalId), childLevel, docType);
             }
         });
     }
@@ -444,14 +445,16 @@ public class JsonOutput {
      *
      * @param itemDataMap
      */
-    protected void addDrawingToResponse(HashMap<String, Object> itemDataMap) {
+    protected void addDrawingToResponse(HashMap<String, Object> itemDataMap, String docType) {
         if (attributeList.isEmpty() || !attributeList.contains("Drawing Number")) {
             return;
         }
         String physicalId = (String) itemDataMap.get("physicalid");
         if (drawingDataHolderMap.containsKey(physicalId)) {
             List<Map<String, String>> drawingList = drawingDataHolderMap.get(physicalId);
-            if (drawingList.size() == 1) {
+            String[] attributeArr = docType.split(",");
+
+            if (((drawingList.size() > 0 && attributeArr.length == 1) && (attributeArr[0].equalsIgnoreCase("ProductionAndCustomer") || attributeArr[0].equalsIgnoreCase("Customer")))) {
                 drawingList.remove(0);
             }
             List<Map<String, Object>> drawingDataList = new ArrayList<>();
@@ -654,7 +657,7 @@ public class JsonOutput {
             }
         }
 
-        if (isAttributeListEmpty || attributeList.contains("Work Quantity")) {
+        if (attributeList.contains("Work Quantity")) {
             if (!NullOrEmptyChecker.isNullOrEmpty((String) singleObjResult.get("Work Quantity"))) {
                 singleObjResult.put("Work Quantity", singleObjResult.get("Work Quantity"));
             } else {
@@ -662,7 +665,7 @@ public class JsonOutput {
             }
         }
 
-        if (isAttributeListEmpty || attributeList.contains("ItemCode") && (singleObjResult.get("Project").toString().equalsIgnoreCase("AUTOMATION_INTERNAL"))) {
+        if (attributeList.contains("ItemCode") && (singleObjResult.get("Project").toString().equalsIgnoreCase("AUTOMATION_INTERNAL"))) {
             if (!singleObjResult.get("AUT_Purpose").toString().equalsIgnoreCase("Phantom")) {
                 if (!NullOrEmptyChecker.isNullOrEmpty((String) singleObjResult.get("ItemCode"))) {
 
@@ -671,21 +674,24 @@ public class JsonOutput {
                 } else {
                     FetchEvolution fetchEvolution = new FetchEvolution();
                     FecthItemAutCycle fecthItemAutCycle = new FecthItemAutCycle();
+                    String getParentPhysicalId = "";
                     String relationshipIdByItem = fecthItemAutCycle.getRelationshipIdByItem(context, singleObjResult.get("Type").toString(), singleObjResult.get("name").toString(), singleObjResult.get("revision").toString());
 
                     List<String> typeRelationshipToParentId = fecthItemAutCycle.getTypeRelationshipToChildId(context, relationshipIdByItem);
-
-                    String getParentPhysicalId = fecthItemAutCycle.getRelationshipIdByItem(context, typeRelationshipToParentId.get(3), typeRelationshipToParentId.get(4), typeRelationshipToParentId.get(5));
-
+                    if (typeRelationshipToParentId.size() > 0) {
+                        getParentPhysicalId = fecthItemAutCycle.getRelationshipIdByItem(context, typeRelationshipToParentId.get(3), typeRelationshipToParentId.get(4), typeRelationshipToParentId.get(5));
+                    }
                     try {
-                        boolean hasEvolution = fetchEvolution.hasEvolution(getParentPhysicalId, context);
+                        // boolean hasEvolution = fetchEvolution.hasEvolution(getParentPhysicalId, context);
+
+                        boolean hasEvolution = fetchEvolution.hasConfigContext(getParentPhysicalId, context);
 
                         if (hasEvolution) {
-                            Map<String, List<String>> mvRelid = fetchEvolution.getEvolution(getParentPhysicalId, context);
+                            List<String> mvRelid = fetchEvolution.fetchConfigContext(getParentPhysicalId, context);
 
-                            Map.Entry<String, List<String>> next = mvRelid.entrySet().iterator().next();
-                            List<String> mvrel = mvRelid.get(next.getKey());
-                            List<String> mvitemInfo = fecthItemAutCycle.getTypeRelationshipId(context, mvrel.get(0));
+//                            Map.Entry<String, List<String>> next = mvRelid.entrySet().iterator().next();
+//                            List<String> mvrel = mvRelid.get(next.getKey());
+                            List<String> mvitemInfo = fecthItemAutCycle.getTypeRelationshipId(context, mvRelid.get(0));
 //                           
                             singleObjResult.put("ItemCode", mvitemInfo.get(1));
                             JSON_OUTPUT_LOGGER.info("Item code value " + mvitemInfo.get(1));
@@ -726,9 +732,13 @@ public class JsonOutput {
                 singleObjResult.put("ERP Item Type", "purchase");
             }
         }
+
+        String[] attributeArr = docType.split(",");
+        attributeArr = getPriorityDrawingTypeList(attributeArr);
+
         if (isAttributeListEmpty || attributeList.contains("DistributionList")) {
             drawingUtil = new DrawingUtil();
-            HashMap<String, String> distributionList = drawingUtil.fetchDrawingNumber(context, busWithSelect, docType, typesAndRelations);
+            HashMap<String, String> distributionList = drawingUtil.fetchDrawingNumber(context, busWithSelect, docType, attributeArr, typesAndRelations);
             singleObjResult.put("DistributionList", distributionList.get("DistributionList"));
         }
         if (isAttributeListEmpty || attributeList.contains("Drawing Number")) {
@@ -741,7 +751,7 @@ public class JsonOutput {
             }
             drawingUtil = new DrawingUtil();
 
-            HashMap<String, String> drawingNo = drawingUtil.fetchDrawingNumber(context, busWithSelect, docType, typesAndRelations);
+            HashMap<String, String> drawingNo = drawingUtil.fetchDrawingNumber(context, busWithSelect, docType, attributeArr, typesAndRelations);
             singleObjResult.put("Drawing Number", drawingNo.get("Drawing Number"));
             singleObjResult.put("Document Links", drawingNo.get("Document Links"));
 
@@ -967,8 +977,8 @@ public class JsonOutput {
     }
 
     protected void populateBomExportResultsMap(BusinessObjectWithSelect businessObjectWithSelect, Context context,
-            RelationshipWithSelect relationshipWithSelect, Map<String, String> typeSelectablesWithOutputName,
-            Map<String, String> relationSelectablesWithOutputName, boolean isRoot, String docType) throws Exception {
+                                               RelationshipWithSelect relationshipWithSelect, Map<String, String> typeSelectablesWithOutputName,
+                                               Map<String, String> relationSelectablesWithOutputName, boolean isRoot, String docType) throws Exception {
         String objectType = businessObjectWithSelect.getSelectData("type");
         boolean attributeListEmpty = attributeList.isEmpty();
         singleObjResult = new LinkedHashMap<>();
@@ -1033,10 +1043,10 @@ public class JsonOutput {
             TreeMap<String, Object> parentBomLines = (TreeMap) parentDataMap.get("bomLines");
 
             // Quantity addition based on position begins
-            /* 
-             * Padded position to allow position 2 before 11, position 3 before 20 etc. 
+            /*
+             * Padded position to allow position 2 before 11, position 3 before 20 etc.
              * Normally in alphabetical sorting 11 appears before 2
-             * But, 000000002 will appear before 000000011 because of the leading zeros. 
+             * But, 000000002 will appear before 000000011 because of the leading zeros.
              * Variable paddedPosition ensures that.
              */
             String paddedPosition = String.format("%09d", position);
@@ -1174,10 +1184,10 @@ public class JsonOutput {
             TreeMap<String, Object> parentBomLines = (TreeMap) parentDataMap.get("bomLines");
 
             // Quantity addition based on position begins
-            /* 
-             * Padded position to allow position 2 before 11, position 3 before 20 etc. 
+            /*
+             * Padded position to allow position 2 before 11, position 3 before 20 etc.
              * Normally in alphabetical sorting 11 appears before 2
-             * But, 000000002 will appear before 000000011 because of the leading zeros. 
+             * But, 000000002 will appear before 000000011 because of the leading zeros.
              * Variable paddedPosition ensures that.
              */
             String paddedPosition = String.format("%09d", position);
@@ -1212,8 +1222,8 @@ public class JsonOutput {
     }
 
     protected void populateResultsMap(BusinessObjectWithSelect businessObjectWithSelect, Context context,
-            RelationshipWithSelect relationshipWithSelect, Map<String, String> typeSelectablesWithOutputName,
-            Map<String, String> relationSelectablesWithOutputName, boolean isRoot, String docType) throws Exception {
+                                      RelationshipWithSelect relationshipWithSelect, Map<String, String> typeSelectablesWithOutputName,
+                                      Map<String, String> relationSelectablesWithOutputName, boolean isRoot, String docType) throws Exception {
         boolean attributeListEmpty = attributeList.isEmpty();
         mergedQtyRow = new HashMap<>();
 
@@ -1519,11 +1529,11 @@ public class JsonOutput {
         if (busWithSelect.getSelectData("current").equals("RELEASED")) {
 
             BusinessObjectUtils bou = new BusinessObjectUtils();
-//            try {
-//                changeActionReviewersFromItem = bou.getChangeActionReviewersFromItem(context, busWithSelect);
-//            } catch (Exception ex) {
-//                JSON_OUTPUT_LOGGER.error("Could not get Reviewer item :" + ex.getMessage());
-//            }
+            try {
+                changeActionReviewersFromItem = bou.getChangeActionReviewersFromItem(context, busWithSelect);
+            } catch (Exception ex) {
+                JSON_OUTPUT_LOGGER.error("Could not get Reviewer item :" + ex.getMessage());
+            }
             try {
                 if (changeActionReviewersFromItem.size() > 0) {
                     changeActionReviewersFromItem.forEach(state -> {
@@ -1573,7 +1583,7 @@ public class JsonOutput {
         return releasedDate;
     }
 
-//    protected String getSignerName(BusinessObject bo, Context context, String fromState, String toState) {
+    //    protected String getSignerName(BusinessObject bo, Context context, String fromState, String toState) {
 //        SignatureList signatures;
 //        String statusUpdater = "";
 //        try {
@@ -1830,15 +1840,23 @@ public class JsonOutput {
         this.typeShortNameMap = typeShortNameMap;
     }
 
-    public List<HashMap<String, String>> getSummaryResultList() {
+    public List<HashMap<String, String>> getSingleSummaryResultList() {
         singleLevelSummaryMap.forEach((summaryMapkey, summaryData) -> {
             HashMap<String, String> tempDraw = singleLevelSummaryMap.get(summaryMapkey);
             String drawNumber = tempDraw.get("Drawing Number");
             if (!summaryTemp.contains(drawNumber)) {
 
                 summaryTemp.add(drawNumber);
-                summaryResultList.add(summaryData);
+                summarySingleResultList.add(summaryData);
             }
+
+        });
+        return summarySingleResultList;
+    }
+
+    public List<HashMap<String, String>> getSummaryResultList() {
+        summaryMap.forEach((summaryMapkey, summaryData) -> {
+            summaryResultList.add(summaryData);
 
         });
         return summaryResultList;

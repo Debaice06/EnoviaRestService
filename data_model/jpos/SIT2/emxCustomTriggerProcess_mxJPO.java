@@ -196,72 +196,45 @@ public class emxCustomTriggerProcess_mxJPO {
 
             String organization = bo.getOrganizationOwner(ctx).getName();
             Boolean isAutValInternalOrg = organization.equalsIgnoreCase("AUTOMATION_VAL_INTERNAL");
-
-            String itemCode = bo.getAttributeValues(ctx, "MBOM_MBOMATON.MBOM_ItemCode").getValue();
-
+            String dirForenCPQ = getDirectory("EnoviaToCPQ");
+            //   String itemCode = bo.getAttributeValues(ctx, "MBOM_MBOMATON.MBOM_ItemCode").getValue();
+            String itemCode = "";
             String getPhysicalIdByItem = getPhysicalIdByItem(ctx, model.type, model.name, model.revision);
 
             List<String> typeRelationshipToParentId = getTypeRelationshipToChildId(ctx, getPhysicalIdByItem);
+            if (typeRelationshipToParentId.size() > 0) {
 
-            String getParentPhysicalId = getPhysicalIdByItem(ctx, typeRelationshipToParentId.get(3), typeRelationshipToParentId.get(4), typeRelationshipToParentId.get(5));
+                String getParentPhysicalId = getPhysicalIdByItem(ctx, typeRelationshipToParentId.get(3), typeRelationshipToParentId.get(4), typeRelationshipToParentId.get(5));
 
-            boolean hasContext = false;
-            hasContext = hasConfigContext(getParentPhysicalId, ctx);
+                boolean hasContext = false;
+                hasContext = hasConfigContext(getParentPhysicalId, ctx);
 
-            Boolean isSupportedType = Arrays
-                    .asList(typeCPQList.split(","))
-                    .stream()
-                    .filter(permittedItemType -> permittedItemType.equalsIgnoreCase(model.type))
-                    .findFirst()
-                    .isPresent();
+                Boolean isSupportedType = Arrays
+                        .asList(typeCPQList.split(","))
+                        .stream()
+                        .filter(permittedItemType -> permittedItemType.equalsIgnoreCase(model.type))
+                        .findFirst()
+                        .isPresent();
 
-            String dirForenCPQ = getDirectory("EnoviaToCPQ");
-            if (isSupportedType && isAutValInternalOrg && model.nextState.equals("RELEASED") && (!itemCode.isEmpty() || hasContext)) {
+                if (isSupportedType && isAutValInternalOrg && model.nextState.equals("RELEASED") && hasContext) {
 
-                String dir = dirForenCPQ + File.separator + "CPQTransfer_" + model.name + "_" + dateAndTime + ".xml";
-                createXmlFileInSpecificDirectory(model.objectId, model.currentState, model.nextState, model.name, model.revision, dir);
-            } else if (isSupportedType && isAutValInternalOrg && model.nextState.equals("FROZEN") && (!itemCode.isEmpty() || hasContext)) {
-                //    FetchEvolution fetchEvolution = new FetchEvolution();
-             //   FecthItemAutCycle fecthItemAutCycle = new FecthItemAutCycle();
-                try {
-                    boolean hasEvolution = hasEvolution(getParentPhysicalId, ctx);
-                    if (hasEvolution) {
-                        Map<String, List<String>> mvRelid = getEvolution(getParentPhysicalId, ctx);
-                        String effectConnectId = "";
-                        for (Map.Entry<String, List<String>> entry : mvRelid.entrySet()) {
+                    String dir = dirForenCPQ + File.separator + "CPQTransfer_" + model.name + "_" + dateAndTime + ".xml";
+                    createXmlFileInSpecificDirectory(model.objectId, model.currentState, model.nextState, model.name, model.revision, dir);
+                } else if (isSupportedType && isAutValInternalOrg && model.nextState.equals("FROZEN") && hasContext) {
 
-                            boolean connectMV = getConnectedRelationshipToChildId(ctx, entry.getKey(), model.name, model.revision);
-                            if (connectMV) {
-                                effectConnectId = entry.getKey();
-                            }
-                        }
-                        if (effectConnectId.isEmpty()) {
+                    dirForenCPQ = getDirectory("EnoviaToCPQ");
+                    String dir = dirForenCPQ + File.separator + "CPQTransfer_" + model.name + "_" + dateAndTime + ".xml";
+                    createXmlFileInSpecificDirectory(model.objectId, model.currentState, model.nextState, model.name, model.revision, dir);
 
-                            Map.Entry<String, List<String>> next = mvRelid.entrySet().iterator().next();
-                            effectConnectId = next.getKey();
-                        }
-
-                        List<String> mvrel = mvRelid.get(effectConnectId);
-                        List<String> mvitemInfo = getTypeRelationshipId(ctx, mvrel.get(0));
-                        boolean autType = getAUTType(ctx, mvitemInfo.get(0), mvitemInfo.get(1), mvitemInfo.get(2));
-                        if (autType) {
-                            dirForenCPQ = getDirectory("EnoviaToCPQ");
-                            String dir = dirForenCPQ + File.separator + "CPQTransfer_" + model.name + "_" + dateAndTime + ".xml";
-                            createXmlFileInSpecificDirectory(model.objectId, model.currentState, model.nextState, model.name, model.revision, dir);
-                        } else {
-                            dirForenCPQ = getDirectory("EnoviaToCPQ");
-                            String dir = dirForenCPQ + File.separator + "CPQTransfer_" + model.name + "_" + dateAndTime + ".xml";
-                            createXmlFileInSpecificDirectory(model.objectId, model.currentState, model.nextState, model.name, model.revision, dir);
-
-                        }
-                    }
-                } catch (Exception ex) {
-                    Logger.getLogger(emxCustomTriggerProcess_mxJPO.class.getName()).log(Level.SEVERE, null, ex);
                 }
+            } else {
 
-                //  }
-                //    }
+                String message = "Multiple Parent Context Item for MFG Item";
+                dirForenCPQ = getDirectory("EnoviaToCPQ");
+                String dir = dirForenCPQ + File.separator + "CPQTransfer_" + model.name + "_" + dateAndTime + ".xml";
+                createXmlFileInSpecificDirectoryWithMessage(model.objectId, model.currentState, model.nextState, model.name, model.revision, message, dir);
             }
+
         } catch (Exception ex) {
 
             System.out.println(" Error Occurred " + ex.getMessage());
@@ -351,13 +324,17 @@ public class emxCustomTriggerProcess_mxJPO {
 
         System.out.println(" Parent Item Info by Relationship " + mqlQuery);
         String mqlResult = MqlUtil.mqlCommand(ctx, mqlQuery);
+        String[] tempList = mqlResult.split("[\\r\\n]+");
+        if (tempList.length == 1) {
+            //  for (int i = 0; i < tempList.length; i++) {
 
-        String[] tempSingleList = mqlResult.split("\\|");
+            String[] tempSingleList = tempList[0].split("\\|");
 
-        for (int k = 0; k < tempSingleList.length; k++) {
-            mftitemname.add(tempSingleList[k]);
+            for (int k = 0; k < tempSingleList.length; k++) {
+                mftitemname.add(tempSingleList[k]);
+            }
         }
-
+        //  }
         return mftitemname;
     }
 
@@ -454,6 +431,60 @@ public class emxCustomTriggerProcess_mxJPO {
         }
     }
 
+    public void createXmlFileInSpecificDirectoryWithMessage(String objectId, String currentState, String nextState, String name, String revision, String message, String dir) {
+        try {
+
+            DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+
+            Document doc = docBuilder.newDocument();
+            Element rootElement = doc.createElement("iteminfo");
+            doc.appendChild(rootElement);
+
+            Element staff = doc.createElement("id");
+            staff.appendChild(doc.createTextNode(objectId));
+            rootElement.appendChild(staff);
+
+            Element itemName = doc.createElement("name");
+            itemName.appendChild(doc.createTextNode(name));
+            rootElement.appendChild(itemName);
+
+            Element itemRev = doc.createElement("revision");
+            itemRev.appendChild(doc.createTextNode(revision));
+            rootElement.appendChild(itemRev);
+
+            Element itemCurrentStatus = doc.createElement("currentState");
+            itemCurrentStatus.appendChild(doc.createTextNode(currentState));
+            rootElement.appendChild(itemCurrentStatus);
+
+            Element itemNextState = doc.createElement("nextState");
+            itemNextState.appendChild(doc.createTextNode(nextState));
+            rootElement.appendChild(itemNextState);
+
+            Element errorMessage = doc.createElement("message");
+            errorMessage.appendChild(doc.createTextNode(message));
+            rootElement.appendChild(errorMessage);
+
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            DOMSource source = new DOMSource(doc);
+            transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+            transformer.setOutputProperty(OutputKeys.METHOD, "xml");
+            transformer.setOutputProperty(OutputKeys.ENCODING, "ISO-8859-1");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            StreamResult result = new StreamResult(new File(dir));
+
+            transformer.transform(source, result);
+            System.out.println("File saved! Directory :" + dir);
+
+        } catch (ParserConfigurationException pce) {
+            pce.printStackTrace();
+        } catch (TransformerException tfe) {
+            tfe.printStackTrace();
+        }
+    }
+
     private class MasterShipChangeModel {
 
         public String fileName;
@@ -482,6 +513,11 @@ public class emxCustomTriggerProcess_mxJPO {
         }
     }
 
+}
+
+class FetchEvolution {
+    // private static final Logger LOGGER = Logger.getLogger(FetchEvolution.class.getName());
+
     public boolean hasEvolution(String pid, Context context) throws Exception {
         System.out.println(" ++++++++++++++ hasEvolution +++++++++++++++ ");
         String queryResult = this.evolutionQueryResult(pid, context);
@@ -496,7 +532,7 @@ public class emxCustomTriggerProcess_mxJPO {
     private String evolutionQueryResult(String pid, Context context) throws Exception {
         String queryFormat = "expand bus {0} from relationship VPLMrel/PLMConnection/V_Owner type VPMCfgEffectivity select bus physicalid dump |";
         String query = MessageFormat.format(queryFormat, pid);
-        return getQueryResult(query, context);
+        return FetchEvolution.getQueryResult(query, context);
     }
 
     public Map<String, List<String>> getEvolution(String id, Context context) throws Exception {
@@ -556,7 +592,7 @@ public class emxCustomTriggerProcess_mxJPO {
         for (String id : idListOfVPMCfgEffectivity) {
             String query = MessageFormat.format(pathsQueryFormat, id);
             System.out.println("Query: " + query);
-            String queryResult = getQueryResult(query, context);
+            String queryResult = FetchEvolution.getQueryResult(query, context);
             paths.add(queryResult);
         }
         System.out.println(" ------------ getPathsInfoOfVPMCfgEffectivity -------------- ");
@@ -592,60 +628,60 @@ public class emxCustomTriggerProcess_mxJPO {
 //        configContexts = this.getConfigContextsByParsingDumpQueryResult(pathsInfo);
 //        return configContexts;
 //    }
-//    private List<String> getConfigContextsByParsingDumpQueryResult(String queryResult) {
-//        System.out.println("+++++++++++ getConfigContextsByParsingDumpQueryResult ++++++++++++++++");
-//        List<String> configContexts = new ArrayList<>();
-//
-//        System.out.println(queryResult);
-//        String[] lines = queryResult.split("\\|");
-//        System.out.println(Arrays.toString(lines));
-//
-//        for (String modelLine : lines) {
-//            System.out.println(modelLine);
-//            if (modelLine == null || modelLine.equals("") || !modelLine.contains("Model,")) {
-//                continue;
-//            }
-//            String physicalIDModel = modelLine.substring(modelLine.indexOf("Model,")).split("\\,")[1];
-//            System.out.println("Model Physical ID: " + physicalIDModel);
-//            configContexts.add(physicalIDModel);
-//        }
-//        System.out.println("--------- getConfigContextsByParsingDumpQueryResult ----------");
-//        return configContexts;
-//    }
+    private List<String> getConfigContextsByParsingDumpQueryResult(String queryResult) {
+        System.out.println("+++++++++++ getConfigContextsByParsingDumpQueryResult ++++++++++++++++");
+        List<String> configContexts = new ArrayList<>();
 
-//    private String executeQueryToFetchPathsInfo(String pidVPMCfgContext, Context context) throws Exception {
-//        String pathsQueryFormat = "print bus {0}  select paths.path dump |,";
-//        String pathQuery = MessageFormat.format(pathsQueryFormat, pidVPMCfgContext);;
-//
-//        // execute mql and get response
-//        String queryResult = getQueryResult(pathQuery, context);
-//
-//        //pathsInfo = "SemanticRelation^businessobject,Model,3AAB758B0000703C6220866A000060F8,3AAB758B0000703C6220866A000060FA,3AAB758B0000703C6220866A000060F8,3AAB758B0000703C6220866A000060FC,FALSE|,SemanticRelation^businessobject,Model,3AAB758B0000703C622868C0000064AC,3AAB758B0000703C622868C0000064AE,3AAB758B0000703C622868C0000064AC,3AAB758B0000703C622868C0000064B0,FALSE";
-//        System.out.println(queryResult);
-//        return queryResult;
-//    }
-//
-//    private String executeToFetchVPMCfgContext(String pid, Context context) throws Exception {
-//        String queryFormat = "expand bus {0} from relationship VPLMrel/PLMConnection/V_Owner type VPMCfgContext  select bus physicalid dump |";
-//        String query = MessageFormat.format(queryFormat, pid);
-//        System.out.println(query);
-//
-//        String queryResult = getQueryResult(query, context);
-//
-//        // queryResult =
-//        // "1|VPLMrel/PLMConnection/V_Owner|to|VPMCfgContext|3AAB758B00008DB4623829F900002494||3AAB758B00008DB4623829F900002494";
-//        return queryResult;
-//    }
-//
-//    private String getVPMCfgContextByParsingDumpQueryResult(String queryResult) {
-//        // parsing and get VPMCfgContext physical id
-//
-//        String[] chunks = queryResult.split("\\|");
-//        System.out.println(Arrays.toString(chunks));
-//        String pidVPMCfgContext = chunks[chunks.length - 1];
-//
-//        return pidVPMCfgContext;
-//    }
+        System.out.println(queryResult);
+        String[] lines = queryResult.split("\\|");
+        System.out.println(Arrays.toString(lines));
+
+        for (String modelLine : lines) {
+            System.out.println(modelLine);
+            if (modelLine == null || modelLine.equals("") || !modelLine.contains("Model,")) {
+                continue;
+            }
+            String physicalIDModel = modelLine.substring(modelLine.indexOf("Model,")).split("\\,")[1];
+            System.out.println("Model Physical ID: " + physicalIDModel);
+            configContexts.add(physicalIDModel);
+        }
+        System.out.println("--------- getConfigContextsByParsingDumpQueryResult ----------");
+        return configContexts;
+    }
+
+    private String executeQueryToFetchPathsInfo(String pidVPMCfgContext, Context context) throws Exception {
+        String pathsQueryFormat = "print bus {0}  select paths.path dump |,";
+        String pathQuery = MessageFormat.format(pathsQueryFormat, pidVPMCfgContext);;
+
+        // execute mql and get response
+        String queryResult = getQueryResult(pathQuery, context);
+
+        //pathsInfo = "SemanticRelation^businessobject,Model,3AAB758B0000703C6220866A000060F8,3AAB758B0000703C6220866A000060FA,3AAB758B0000703C6220866A000060F8,3AAB758B0000703C6220866A000060FC,FALSE|,SemanticRelation^businessobject,Model,3AAB758B0000703C622868C0000064AC,3AAB758B0000703C622868C0000064AE,3AAB758B0000703C622868C0000064AC,3AAB758B0000703C622868C0000064B0,FALSE";
+        System.out.println(queryResult);
+        return queryResult;
+    }
+
+    private String executeToFetchVPMCfgContext(String pid, Context context) throws Exception {
+        String queryFormat = "expand bus {0} from relationship VPLMrel/PLMConnection/V_Owner type VPMCfgContext  select bus physicalid dump |";
+        String query = MessageFormat.format(queryFormat, pid);
+        System.out.println(query);
+
+        String queryResult = getQueryResult(query, context);
+
+        // queryResult =
+        // "1|VPLMrel/PLMConnection/V_Owner|to|VPMCfgContext|3AAB758B00008DB4623829F900002494||3AAB758B00008DB4623829F900002494";
+        return queryResult;
+    }
+
+    private String getVPMCfgContextByParsingDumpQueryResult(String queryResult) {
+        // parsing and get VPMCfgContext physical id
+
+        String[] chunks = queryResult.split("\\|");
+        System.out.println(Arrays.toString(chunks));
+        String pidVPMCfgContext = chunks[chunks.length - 1];
+
+        return pidVPMCfgContext;
+    }
 
     public static String getQueryResult(String query, Context context) throws Exception {
         MQLCommand objMQL = new MQLCommand();
@@ -663,7 +699,17 @@ public class emxCustomTriggerProcess_mxJPO {
             throw e;
         }
     }
-    
+}
+
+//class FetchMfgItemConfigurationImpl {
+//
+//    private static final Logger LOGGER = Logger.getLogger(FetchMfgItemConfigurationImpl.class.getName());
+//
+//    
+//
+//}
+class FecthItemAutCycle {
+
     public List<String> getRelationshipIdByItem(Context ctx, String type, String name, String rev) throws FrameworkException {
 
         List<String> physical = new ArrayList<>();
@@ -728,22 +774,33 @@ public class emxCustomTriggerProcess_mxJPO {
         }
         return isPilot;
     }
-}
+    /*Frozen type Logic */
 
-//class FetchEvolution {
-//    // private static final Logger LOGGER = Logger.getLogger(FetchEvolution.class.getName());
+    // FetchEvolution fetchEvolution = new FetchEvolution();
+    // FecthItemAutCycle fecthItemAutCycle = new FecthItemAutCycle();
+    //   try {
+    // boolean hasEvolution = fetchEvolution.hasEvolution(getParentPhysicalId, ctx);
+    // if (hasEvolution) {
+//                        Map<String, List<String>> mvRelid = fetchEvolution.getEvolution(getParentPhysicalId, ctx);
+//                        String effectConnectId = "";
+//                        for (Map.Entry<String, List<String>> entry : mvRelid.entrySet()) {
 //
-//  
-//}
-//class FetchMfgItemConfigurationImpl {
+//                            boolean connectMV = getConnectedRelationshipToChildId(ctx, entry.getKey(), model.name, model.revision);
+//                            if (connectMV) {
+//                                effectConnectId = entry.getKey();
+//                            }
+//                        }
+//                        if (effectConnectId.isEmpty()) {
 //
-//    private static final Logger LOGGER = Logger.getLogger(FetchMfgItemConfigurationImpl.class.getName());
-//
-//    
-//
-////}
-//class FecthItemAutCycle {
-//
-//    
-//
-//}
+//                            Map.Entry<String, List<String>> next = mvRelid.entrySet().iterator().next();
+//                            effectConnectId = next.getKey();
+//                        }
+    // List<String> mvrel = mvRelid.get(effectConnectId);
+    // List<String> mvitemInfo = fecthItemAutCycle.getTypeRelationshipId(ctx, mvrel.get(0));
+//                        boolean autType = fecthItemAutCycle.getAUTType(ctx, mvitemInfo.get(0), mvitemInfo.get(1), mvitemInfo.get(2));
+//                        if (autType) {
+//                            dirForenCPQ = getDirectory("EnoviaToCPQ");
+//                            String dir = dirForenCPQ + File.separator + "CPQTransfer_" + model.name + "_" + dateAndTime + ".xml";
+//                            createXmlFileInSpecificDirectory(model.objectId, model.currentState, model.nextState, model.name, model.revision, dir);
+//                        } else {
+}

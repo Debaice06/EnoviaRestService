@@ -61,4 +61,38 @@ public class HimelliReportProcessor {
         attr.setDest(dest);
         this.notIncludedAttributes.add(attr);
     }
+    
+    public void removeAttr(String name) {
+        switch (name) {
+            case "Standard":
+                addToNotIncludedAttributes("Type", "Standard");
+                break;
+            case "Drawing Number":
+                addToNotIncludedAttributes("Dwg", "Drawing Number");
+                break;
+            case "Level":
+                addToNotIncludedAttributes("Level", "Level");
+                break;
+            case "Position":
+                addToNotIncludedAttributes("Pos", "Position");
+                break;
+            case "Material":
+                addToNotIncludedAttributes("Material", "Material");
+                break;
+            case "Size":
+                addToNotIncludedAttributes("Size", "Size");
+                break;
+            case "name":
+                addToNotIncludedAttributes("ItemId", "name");
+                break;
+            case "Qty":
+                addToNotIncludedAttributes("QtyLine", "Qty");
+                addToNotIncludedAttributes("QtyAssy", "Qty");
+                break;
+            case "Unit":
+                addToNotIncludedAttributes("UnitBom", "Unit");
+                addToNotIncludedAttributes("UnitSales", "Unit");
+                break;
+        }
+    }
 }

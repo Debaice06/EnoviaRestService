@@ -204,21 +204,24 @@ define("VALCON/ReportingPrintingUX/ReportingPrintingUX", ["DS/Foundation/WidgetU
                                 }
                                 reportAttributes += attributeList[index].getAttribute('value');
                             }
-                            if (reportType === "spr") {
-                                var isLatest = jQuery('#latestBom').is(':checked');
-								if(!(reportAttributes.includes("name") && reportAttributes.includes("Title"))){
-                                     ReportingPrintingWidget.error(i18n.SRP_MANDATORY_ATTRIBUTE_ERROR);
-								} else{
-									var drawingNumber = false;
-									if((reportAttributes.includes("Drawing Number")) && (docType !==null)){
-										drawingNumber=true;
-									}
-									ReportingPrintingWidget.generateHimelliReport(bomLevel, reportAttributes, seletedreportFormat, seletedreportLang, primaryLanguage, secondaryLanguage, docType, isLatest,drawingNumber);
-								}
+                            if(printDrawing === true && docType === null) {
+                                ReportingPrintingWidget.error(i18n.RP_ALERT_DOC_TYPE);
                             } else {
-                                ReportingPrintingWidget.generateReport(seletedreportName, seletedreportLang, seletedreportBasic, seletedreportFormat, bomLevel, printDrawing, printSummary, reportAttributes, printDelivery, mainProjTitle, psk, subTitle, product, primaryLanguage, secondaryLanguage, docType);
+                                if (reportType === "spr") {
+                                    var isLatest = jQuery('#latestBom').is(':checked');
+                                    if (!(reportAttributes.includes("name") && reportAttributes.includes("Title"))) {
+                                        ReportingPrintingWidget.error(i18n.SRP_MANDATORY_ATTRIBUTE_ERROR);
+                                    } else {
+                                        var drawingNumber = false;
+                                        if ((reportAttributes.includes("Drawing Number"))) {
+                                            drawingNumber = true;
+                                        }
+                                        ReportingPrintingWidget.generateHimelliReport(bomLevel, reportAttributes, seletedreportFormat, seletedreportLang, primaryLanguage, secondaryLanguage, docType, isLatest, drawingNumber);
+                                    }
+                                } else {
+                                    ReportingPrintingWidget.generateReport(seletedreportName, seletedreportLang, seletedreportBasic, seletedreportFormat, bomLevel, printDrawing, printSummary, reportAttributes, printDelivery, mainProjTitle, psk, subTitle, product, primaryLanguage, secondaryLanguage, docType);
+                                }
                             }
-
                         }
                     } else {
                         ReportingPrintingWidget.warn(i18n.RP_ALERT_BOM_LEVEL);
@@ -249,7 +252,7 @@ define("VALCON/ReportingPrintingUX/ReportingPrintingUX", ["DS/Foundation/WidgetU
             submitURL = WidgetConfiguration.RP_ENOVIA_REST_SERVICE_URL + WidgetConfiguration.RP_SPR_REPORT_GENERATE_SERVICE_URL;
             submitURL = submitURL + "type=" + itemType;
             submitURL = submitURL + "&name=" + itemName;
-            submitURL = submitURL + "&format=" + seletedreportFormat;
+            // submitURL = submitURL + "&format=" + seletedreportFormat;
             submitURL = submitURL + "&lang=" + seletedreportLang;
             // submitURL = submitURL + "&printDrawing=" + printDrawing;
             submitURL = submitURL + "&rev=" + itemRev;
@@ -261,6 +264,7 @@ define("VALCON/ReportingPrintingUX/ReportingPrintingUX", ["DS/Foundation/WidgetU
             submitURL = submitURL + "&requester=" + requester;
             submitURL = submitURL + "&drawingType=" + docType;
 			submitURL = submitURL + "&drawingNumber=" + drawingNumber;
+            submitURL = submitURL + "&receiverEmail=" + encodeURIComponent(ReportingPrintingWidget.mailAddress);
 
             if (reportAttributes.length > 0) {
                 var timestampNow = new Date().getTime();
@@ -389,22 +393,27 @@ define("VALCON/ReportingPrintingUX/ReportingPrintingUX", ["DS/Foundation/WidgetU
                                         }
                                     };
                                 } else {
-                                    var type = request.getResponseHeader('Content-Type');
-                                    var blob = new Blob([this.response], {
-                                        type: type
-                                    });
-                                    var downloadUrl = URL.createObjectURL(blob);
-                                    var a = document.createElement("a");
-                                    a.href = downloadUrl;
-                                    a.download = fileName;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    Mask.unmask(widget.getElement(".container"));
-                                    ReportingPrintingWidget.success(i18n.RP_REPORT_GENERATION_OK);
-                                    setTimeout(function() {
-                                        URL.revokeObjectURL(downloadUrl);
-                                    }, 100);
-                                    a.remove();
+                                    if (this.response.size === 0){
+                                        Mask.unmask(widget.getElement(".container"));
+                                        ReportingPrintingWidget.info(i18n.RP_REPORT_GENERATION_BACKGROUND_MESSAGE);
+                                    } else {
+                                        var type = request.getResponseHeader('Content-Type');
+                                        var blob = new Blob([this.response], {
+                                            type: type
+                                        });
+                                        var downloadUrl = URL.createObjectURL(blob);
+                                        var a = document.createElement("a");
+                                        a.href = downloadUrl;
+                                        a.download = fileName;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        Mask.unmask(widget.getElement(".container"));
+                                        ReportingPrintingWidget.success(i18n.RP_REPORT_GENERATION_OK);
+                                        setTimeout(function() {
+                                            URL.revokeObjectURL(downloadUrl);
+                                        }, 100);
+                                        a.remove();
+                                    }
                                 }
                             } else if (request.status > 200) {
                                 console.log("File Download Error " + request.status);
@@ -691,12 +700,15 @@ define("VALCON/ReportingPrintingUX/ReportingPrintingUX", ["DS/Foundation/WidgetU
                 RPWidget.objectType = WidgetConfiguration.RP_ITEM_TYPE[PreferenceConfiguration.RP_PREF_REPORT_TYPE_PREFERRED_VALUE];
                 objectType = WidgetConfiguration.RP_ITEM_TYPE[PreferenceConfiguration.RP_PREF_REPORT_TYPE_PREFERRED_VALUE].split(',')[0];
             }
+            widget.setValue(PreferenceConfiguration.RP_PREF_NAME_SELECTED_ATTRIBUTE, "");
             ReportingPrintingWidget.populateReportableAttributes(objectType);
             widget.body.getElement(".autocomplete-input").value = "";
+            RPWidget.controls.revision.setValue("");
             RPWidget.controls.mainProjTitle.setValue([""]);
             RPWidget.controls.psk.setValue([""]);
             RPWidget.controls.subTitle.setValue([""]);
             RPWidget.controls.product.setValue([""]);
+            RPWidget.controls.docType.setValue([""]);
             RPWidget.controls.mainProjTitle.enable;
             RPWidget.controls.psk.enable;
             RPWidget.controls.subTitle.enable;
@@ -726,13 +738,26 @@ define("VALCON/ReportingPrintingUX/ReportingPrintingUX", ["DS/Foundation/WidgetU
                 selectedAttributePreferred = widget.getValue(PreferenceConfiguration.RP_PREF_NAME_SELECTED_ATTRIBUTE).split("\|");
             }
             var reportType = widget.getValue(PreferenceConfiguration.RP_PREF_NAME_REPORT_TYPE);
+            var printSummaryReportPref;
             if (reportType === "spr") {
+                printSummaryReportPref = {
+                    type: "hidden",
+                    name: PreferenceConfiguration.RP_PREF_NAME_PRINT_SUMMARY,
+                    label: PreferenceConfiguration.RP_PREF_LABEL_PRINT_SUMMARY,
+                    defaultValue: false
+                };
                 var requestUrl = WidgetConfiguration.RP_ENOVIA_REST_SERVICE_URL + WidgetConfiguration.SPR_ALL_SELECTABLE_ATTRIBUTES_URL + itemType + "&requester=himelli";
                 console.log(requestUrl);
             } else {
+                printSummaryReportPref = {
+                    type: "boolean",
+                    name: PreferenceConfiguration.RP_PREF_NAME_PRINT_SUMMARY,
+                    label: PreferenceConfiguration.RP_PREF_LABEL_PRINT_SUMMARY,
+                    defaultValue: widget.getValue(PreferenceConfiguration.RP_PREF_NAME_PRINT_SUMMARY) || PreferenceConfiguration.RP_PREF_PRINT_SUMMARY_PREFERRED_VALUE
+                };
                 var requestUrl = WidgetConfiguration.RP_ENOVIA_REST_SERVICE_URL + WidgetConfiguration.RP_ALL_SELECTABLE_ATTRIBUTES_URL + itemType;
             }
-
+            widget.addPreference(printSummaryReportPref);
             var httpRequest = new XMLHttpRequest();
             httpRequest.onreadystatechange = function() {
                 if (this.readyState == 4 && this.status == 200) {
@@ -747,7 +772,11 @@ define("VALCON/ReportingPrintingUX/ReportingPrintingUX", ["DS/Foundation/WidgetU
                         if (attributesAndValues.hasOwnProperty(key)) {
                             var liItem = document.createElement('li');
                             liItem.appendChild(document.createTextNode(key));
-                            liItem.className = 'list-group-item active';
+                            if (key === 'Name' || key === 'Title' || key === 'Revision' || key === 'Position') {
+                                liItem.className = 'list-group-item disabled';
+                            } else {
+                                liItem.className = 'list-group-item active';
+                            }
                             liItem.setAttribute('value', attributesAndValues[key]);
 
                             if (selectedAttributePreferred.length) {
@@ -1213,6 +1242,7 @@ define("VALCON/ReportingPrintingUX/ReportingPrintingUX", ["DS/Foundation/WidgetU
                 if (!jQuerycheckBox.hasClass('selected')) {
                     jQuerycheckBox.addClass('selected').closest('.well').find('ul li:not(.active)').addClass('active');
                     jQuerycheckBox.children('i').removeClass('fonticon-select-none').addClass('fonticon-select-all');
+                    jQuerycheckBox.addClass('selected').closest('.well').find('ul li.disabled').removeClass('active');
                 } else {
                     jQuerycheckBox.removeClass('selected').closest('.well').find('ul li.active').removeClass('active');
                     jQuerycheckBox.children('i').removeClass('fonticon-select-all').addClass('fonticon-select-none');

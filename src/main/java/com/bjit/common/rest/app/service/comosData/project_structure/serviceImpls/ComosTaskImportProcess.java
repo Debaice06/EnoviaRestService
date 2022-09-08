@@ -114,11 +114,11 @@ public class ComosTaskImportProcess implements ITaskImportProcess<ComosProjectSp
                     List<ComosTaskBean> sortTasksAndMileStonesData = taskSort.sortTasksAndMileStonesData(importBean.getTableData());
                     JSON json = new JSON(Boolean.FALSE);
 
-                    System.out.println("######################################");
-                    System.out.println("######################################");
-                    System.out.println(json.serialize(sortTasksAndMileStonesData));
-                    System.out.println("######################################");
-                    System.out.println("######################################");
+//                    System.out.println("######################################");
+//                    System.out.println("######################################");
+//                    System.out.println(json.serialize(sortTasksAndMileStonesData));
+//                    System.out.println("######################################");
+//                    System.out.println("######################################");
 
                     importBean.setTableData(sortTasksAndMileStonesData);
 

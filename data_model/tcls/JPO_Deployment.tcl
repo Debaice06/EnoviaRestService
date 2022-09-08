@@ -1,6 +1,7 @@
 tcl;
 eval {
 	set target_jpos(1) "emxProductCustomTriggerProcess"
+	set target_jpos(2) "emxCustomTriggerProcess"
 
 	file mkdir "JPO_LOGS" "JPO_Backups"
 	

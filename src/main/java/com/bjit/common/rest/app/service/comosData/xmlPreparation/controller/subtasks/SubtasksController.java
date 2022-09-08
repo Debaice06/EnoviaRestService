@@ -1,11 +1,13 @@
 package com.bjit.common.rest.app.service.comosData.xmlPreparation.controller.subtasks;
 
 import com.bjit.common.rest.app.service.aspects.annotations.LogExecutionTime;
+import com.bjit.common.rest.app.service.comosData.exceptions.SubtasksStructureException;
 import com.bjit.common.rest.app.service.comosData.xmlPreparation.model.SubtasksRequestData;
 import com.bjit.common.rest.app.service.comosData.xmlPreparation.model.subtasks.SubtaskRequestEnvelope;
 import com.bjit.common.rest.app.service.comosData.xmlPreparation.model.subtasks.SubtasksServiceResponse;
 import com.bjit.common.rest.app.service.comosData.xmlPreparation.utilServices.IFileReader;
 import com.bjit.common.rest.app.service.comosData.xmlPreparation.utilServices.IStructurePreparation;
+import com.bjit.common.rest.app.service.payload.common_response.IResponse;
 import com.bjit.common.rest.app.service.utilities.IJSON;
 import com.bjit.common.rest.item_bom_import.xml_mapping_model.ResponseMessageFormaterBean;
 import org.springframework.beans.factory.BeanFactory;
@@ -16,9 +18,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import com.bjit.common.rest.app.service.payload.common_response.Status;
 import javax.validation.Valid;
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 @RestController
@@ -26,9 +30,9 @@ import java.io.IOException;
 @RequestMapping("/comos/v1")
 public class SubtasksController {
 
-//    @Autowired
-//    @Qualifier("ComosFileWriter")
-//    IComosFileWriter fileWriter;
+    @Autowired
+    @Qualifier("CustomResponseBuilder")
+    IResponse responseBuilder;
 
     @Autowired
     IJSON json;
@@ -45,18 +49,27 @@ public class SubtasksController {
 
     @LogExecutionTime
     @PostMapping("/export/subtasks/xml")
-    public Object createJAXBPlantModel(@Valid @RequestBody SubtaskRequestEnvelope requestData) throws IOException {
-        Object prepareStructure = structurePreparation.prepareStructure(requestData.getSubtasksRequestData());
-
-//        String subtasksData = fileReader.readFile("D:\\COMOS new\\subTasks.json");
-//
-//        GsonBuilder builder = new GsonBuilder();
-//        builder.serializeNulls();
-//        Gson gson = builder.create();
-//        SubtasksResponse serviceResponse = gson.fromJson(subtasksData, SubtasksResponse.class);
-        //Subtasksdeliverable subtasksdeliverable = serviceResponse.getData().getDeliverables();
+    public String createJAXBPlantModel(@Valid @RequestBody SubtaskRequestEnvelope requestData) throws IOException, SubtasksStructureException {
+        //Object prepareStructure = structurePreparation.prepareStructure(requestData.getSubtasksRequestData());
 
 
-        return prepareStructure;
+
+      //  return prepareStructure;
+
+        try {
+            ResponseMessageFormaterBean responseMessageFormaterBean = structurePreparation.prepareStructure(requestData.getSubtasksRequestData());
+
+            String buildResponse = responseBuilder.setData(responseMessageFormaterBean).setStatus(Status.OK).buildResponse();
+            return buildResponse;
+        } catch (Exception ex) {
+            Pattern pattern = Pattern.compile(".*SubtasksStructureException: (.*).*");
+
+            Matcher matcher = pattern.matcher(ex.getMessage());
+            String errorMessage="";
+            while (matcher.find()) {
+                errorMessage=matcher.group(1);
+            }
+            throw new SubtasksStructureException(errorMessage, requestData.getSubtasksRequestData());
+        }
     }
 }

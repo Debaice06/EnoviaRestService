@@ -5,11 +5,23 @@
  */
 package com.bjit.common.rest.app.service.payload.common_response;
 
-import com.bjit.common.rest.app.service.lntransfer.ILNResponse;
 import com.bjit.common.rest.app.service.utilities.CommonUtilities;
 import com.bjit.common.rest.app.service.utilities.JSON;
 import com.bjit.common.rest.app.service.utilities.NullOrEmptyChecker;
 import com.google.gson.JsonObject;
+import org.eclipse.persistence.jaxb.JAXBContextProperties;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.XML;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.web.context.annotation.RequestScope;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.PropertyException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,41 +35,40 @@ import org.eclipse.persistence.jaxb.JAXBContextProperties;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.XML;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.annotation.RequestScope;
 
 /**
- *
  * @author BJIT
  */
-@Component()
+@Service
 @RequestScope
 @Qualifier("CustomResponseBuilder")
 public class CustomResponseBuilder implements IResponse {
 
+    private static final org.apache.log4j.Logger RESPONSE_BUILDER_LOGGER = org.apache.log4j.Logger.getLogger(CustomResponseBuilder.class);
+    private final HashMap<String, Object> newPropertyMap = new HashMap<>();
     private List<Object> errorMessages;
     private Object responseData;
     private String responseStr;
     private Status operationStatus;
     private String source;
     private List<String> systemErrors;
-    private final HashMap<String, Object> newPropertyMap = new HashMap<>();
-    private static final org.apache.log4j.Logger RESPONSE_BUILDER_LOGGER = org.apache.log4j.Logger.getLogger(CustomResponseBuilder.class);
 
     @Override
     public IResponse setStatus(Status status) {
         this.operationStatus = status;
         return this;
     }
-   @Override
+
+    @Override
     public IResponse setSource(String source) {
         this.source = source;
         return this;
     }
+
     @Override
     public IResponse setErrorMessage(List<Object> errorMessage) {
         errorMessage.forEach(this::addErrorMessage);
@@ -168,14 +179,14 @@ public class CustomResponseBuilder implements IResponse {
     private CommonResponse setResponseData() {
         CommonResponse response = new CommonResponse();
         response.setData(this.responseData);
-     
+
         response.setStatus(this.operationStatus);
         response.setMessages(this.errorMessages);
         response.setSystemErrors(this.systemErrors);
 
         return response;
     }
-    
+
 
     @Override
     public String buildResponse(String responseType) {
@@ -224,7 +235,7 @@ public class CustomResponseBuilder implements IResponse {
     /**
      * prepare JSONObject response.
      *
-     * @param message is response status
+     * @param message   is response status
      * @param jsonArray contain final response data
      * @return JSONObject
      */
@@ -235,7 +246,6 @@ public class CustomResponseBuilder implements IResponse {
         response.put("data", jsonArray);
         return response;
     }
-
     public void setErrorMessages(List<Object> errorMessage) {
         this.errorMessages = errorMessage;
     }

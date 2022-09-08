@@ -8,6 +8,13 @@ import com.bjit.common.rest.app.service.controller.export.report.single_level.mo
 import com.bjit.common.rest.app.service.utilities.NullOrEmptyChecker;
 import com.bjit.ewc18x.utils.PropertyReader;
 import com.bjit.mapper.mapproject.jsonOutput.JsonOutput;
+import matrix.db.BusinessObjectWithSelect;
+import matrix.db.ExpansionWithSelect;
+import matrix.db.RelationshipWithSelect;
+import matrix.db.RelationshipWithSelectItr;
+import matrix.db.RelationshipWithSelectList;
+import org.apache.log4j.Logger;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.security.KeyManagementException;
@@ -22,12 +29,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
-import matrix.db.BusinessObjectWithSelect;
-import matrix.db.ExpansionWithSelect;
-import matrix.db.RelationshipWithSelect;
-import matrix.db.RelationshipWithSelectItr;
-import matrix.db.RelationshipWithSelectList;
-import org.apache.log4j.Logger;
 
 /**
  * Container of Single Level Report Business Logic.<br>
@@ -83,8 +84,10 @@ public class SLReportBusinessLogic extends JsonOutput {
         addGTSTitleForAllItems(businessModel.isIsTitleRequired(), detailReportData);
         reportDataModel.setDetailReportData(detailReportData);
 
-        ReportSummaryDataModel summaryDataModel = Boolean.parseBoolean(businessModel.getParameter().getIsSummaryRequired()) ? prepareSummaryReportData() : new ReportSummaryDataModel();
-        reportDataModel.setSummaryReportData(summaryDataModel);
+        if (isSummaryRequired) {
+            ReportSummaryDataModel summaryDataModel = Boolean.parseBoolean(businessModel.getParameter().getIsSummaryRequired()) ? prepareSummaryReportData() : new ReportSummaryDataModel();
+            reportDataModel.setSummaryReportData(summaryDataModel);
+        }
         return reportDataModel;
     }
 
@@ -99,14 +102,31 @@ public class SLReportBusinessLogic extends JsonOutput {
     private List<ReportDetailDataModel> prepareDetailReportData(Object rootItemData, List<ReportDetailDataModel> detailReportData, boolean isRoot) {
         HashMap<String, Object> rootItemDataMap = (HashMap) rootItemData;
         if (isRoot) {
-            ReportDetailDataModel singleLevelDetailBOM = getSingleLevelBOM(rootItemDataMap, isRoot);
+            String itemPhysicalId = (String) rootItemDataMap.get("physicalid");
+            String drawNumber = "";
+            if (drawingDataHolderMap.containsKey(itemPhysicalId)) {
+                List<Map<String, String>> drawingList = drawingDataHolderMap.get(itemPhysicalId);
+                if(drawingList.size() > 0) {
+                    Map<String, String> drawing = drawingList.get(0);
+                    drawNumber = drawing.get("Drawing Number");
+                }
+            }
+            ReportDetailDataModel singleLevelDetailBOM = getSingleLevelBOM(rootItemDataMap, drawNumber);
             detailReportData.add(singleLevelDetailBOM);
 
             detailReportData = checkSingleLevelBOMInChild(rootItemDataMap, detailReportData);
         } else {
             String itemPhysicalId = (String) rootItemDataMap.get("physicalid");
             if (bomLineMap.containsKey(itemPhysicalId)) {
-                ReportDetailDataModel singleLevelDetailBOM = getSingleLevelBOM((HashMap<String, Object>) bomLineMap.get(itemPhysicalId), isRoot);
+                String drawNumber = "";
+                if (drawingDataHolderMap.containsKey(itemPhysicalId)) {
+                    List<Map<String, String>> drawingList = drawingDataHolderMap.get(itemPhysicalId);
+                    if(drawingList.size() > 0) {
+                        Map<String, String> drawing = drawingList.get(0);
+                        drawNumber = drawing.get("Drawing Number");
+                    }
+                }
+                ReportDetailDataModel singleLevelDetailBOM = getSingleLevelBOM((HashMap<String, Object>) bomLineMap.get(itemPhysicalId), drawNumber);
                 detailReportData.add(singleLevelDetailBOM);
                 detailReportData = checkSingleLevelBOMInChild(rootItemDataMap, detailReportData);
             }
@@ -119,28 +139,22 @@ public class SLReportBusinessLogic extends JsonOutput {
      * Business Logic
      *
      * @param parentItemDataMap
-     * @param isRoot
      * @return
      */
-    private ReportDetailDataModel getSingleLevelBOM(HashMap<String, Object> parentItemDataMap, boolean isRoot) {
+    private ReportDetailDataModel getSingleLevelBOM(HashMap<String, Object> parentItemDataMap, String drawingNumber) {
         ReportDetailDataModel singleLevelDetailBOM = new ReportDetailDataModel();
         singleLevelDetailBOM = getRootObjectData(parentItemDataMap, singleLevelDetailBOM);
 
         List<HashMap<String, Object>> detailBOM = new ArrayList<>();
         String physicalId = (String) parentItemDataMap.get("physicalid");
-        if (drawingDataHolderMap.containsKey(physicalId)) {
-            List<Map<String, String>> drawingList = drawingDataHolderMap.get(physicalId);
-            Map<String, String> drawing = drawingList.get(0);
-      
-        }
 
         HashMap<String, Object> parentDetailBOMData = getBOMData(parentItemDataMap, true);
         detailBOM.add(parentDetailBOMData);
-       
+
         addDrawingToSingleLevelBOM(physicalId, detailBOM, 1);
 
         ArrayList<Object> childrenList = (ArrayList<Object>) parentItemDataMap.get("bomLines");
-        getChildBOMData(childrenList, detailBOM);
+        getChildBOMData(childrenList, detailBOM, drawingNumber);
         singleLevelDetailBOM.setDetailBOM(detailBOM);
         return singleLevelDetailBOM;
     }
@@ -159,8 +173,8 @@ public class SLReportBusinessLogic extends JsonOutput {
         singleLevelDetailBOM.setRootObjectState((String) Optional.ofNullable(itemDataMap.get("Status")).orElse(""));
         singleLevelDetailBOM.setRootObjectDes((String) Optional.ofNullable(itemDataMap.get("Description")).orElse(""));
         singleLevelDetailBOM.setRootObjectDrNum((String) Optional.ofNullable(itemDataMap.get("Drawing Number")).orElse(""));
-        singleLevelDetailBOM.setRootObjectReleasedBy((String) Optional.ofNullable(itemDataMap.get("released by")).orElse(""));
-        singleLevelDetailBOM.setRootObjectReleasedDate((String) Optional.ofNullable(itemDataMap.get("released date")).orElse(""));
+        singleLevelDetailBOM.setRootObjectReleasedBy((String) Optional.ofNullable(rootItemParams.get("rootObjectReleasedBy")).orElse(""));
+        singleLevelDetailBOM.setRootObjectReleasedDate((String) Optional.ofNullable(rootItemParams.get("rootObjectReleasedDate")).orElse(""));
         return singleLevelDetailBOM;
     }
 
@@ -171,15 +185,17 @@ public class SLReportBusinessLogic extends JsonOutput {
      * @param detailBOM
      * @return
      */
-    private List<HashMap<String, Object>> getChildBOMData(ArrayList<Object> childrenList, List<HashMap<String, Object>> detailBOM) {
+    private List<HashMap<String, Object>> getChildBOMData(ArrayList<Object> childrenList, List<HashMap<String, Object>> detailBOM, String drawingNumber) {
         if (!NullOrEmptyChecker.isNullOrEmpty(childrenList)) {
             childrenList.forEach((Object childData) -> {
                 HashMap<String, Object> childDataMap = (HashMap) childData;
                 String physicalId = (String) childDataMap.get("physicalid");
                 HashMap<String, Object> childDetailBOMData = getBOMData(childDataMap, false);
+
+                //childDetailBOMData.put("Drawing Number", drawingNumber);
                 detailBOM.add(childDetailBOMData);
                 addDrawingToSingleLevelBOM(physicalId, detailBOM, 1);
-          
+
             });
         }
         return detailBOM;
@@ -240,14 +256,19 @@ public class SLReportBusinessLogic extends JsonOutput {
      */
     private ReportSummaryDataModel prepareSummaryReportData() {
         ReportSummaryDataModel summaryReportData = new ReportSummaryDataModel();
-        summaryReportData.setSummaryBOM(getSummaryResultList());
+        if (drawingDataHolderMap.size() > 0) {
+            summaryReportData.setSummaryBOM(getSingleSummaryResultList());
+        } else {
+            summaryReportData.setSummaryBOM(getSummaryResultList());
+
+        }
         summaryReportData.setRootObjectName(rootItemParams.get("rootObjectName").toString());
         summaryReportData.setRootObjectRev(rootItemParams.get("rootObjectRev").toString());
         summaryReportData.setRootObjectDrNum(summaryReportData.getSummaryBOM().get(0).get("Drawing Number"));
         summaryReportData.setRootObjectState(rootItemParams.get("rootObjectState").toString());
         summaryReportData.setRootObjectDes(rootItemParams.get("rootObjectDes").toString());
-        summaryReportData.setRootObjectReleasedBy("");
-        summaryReportData.setRootObjectReleasedDate("");
+        summaryReportData.setRootObjectReleasedBy(rootItemParams.get("rootObjectReleasedBy").toString());
+        summaryReportData.setRootObjectReleasedDate(rootItemParams.get("rootObjectReleasedDate").toString());
         return summaryReportData;
     }
 
@@ -308,6 +329,23 @@ public class SLReportBusinessLogic extends JsonOutput {
         multilevelBOMList.forEach(itemData -> {
             HashMap<String, Object> itemDataMap = (HashMap) itemData;
             TreeMap<String, Object> positionedBomLineMap = (TreeMap) itemDataMap.get("bomLines");
+
+            positionedBomLineMap.forEach((key, value) -> {
+
+                HashMap<String, Object> childBom = (HashMap) positionedBomLineMap.get(key);
+
+                String physicalId = childBom.get("physicalid").toString();
+
+                if (drawingDataHolderMap.containsKey(physicalId)) {
+                    List<Map<String, String>> drawingList = drawingDataHolderMap.get(physicalId);
+                    if(drawingList.size() > 0) {
+                        Map<String, String> drawing = drawingList.get(0);
+                        childBom.put("Drawing Number", drawing.get("Drawing Number"));
+                    }
+                }
+
+            });
+
             String itemName = (String) itemDataMap.get("name");
             if (positionedBomLineMap.size() > 0 || itemName.equals(root.getSelectData("name"))) {
                 Collection<Object> positionedList = positionedBomLineMap.values();
@@ -315,8 +353,10 @@ public class SLReportBusinessLogic extends JsonOutput {
                 String physicalId = itemDataMap.get("physicalid").toString();
                 if (drawingDataHolderMap.containsKey(physicalId)) {
                     List<Map<String, String>> drawingList = drawingDataHolderMap.get(physicalId);
-                    Map<String, String> drawing = drawingList.get(0);
-                    itemDataMap.put("Drawing Number", drawing.get("Drawing Number"));
+                    if(drawingList.size() > 0) {
+                        Map<String, String> drawing = drawingList.get(0);
+                        itemDataMap.put("Drawing Number", drawing.get("Drawing Number"));
+                    }
                 }
 
                 itemDataMap.put("bomLines", sortedBomList);
@@ -326,7 +366,7 @@ public class SLReportBusinessLogic extends JsonOutput {
             }
         });
 
-        flattenStructure(responseBOMList.get(0), 0);
+        flattenStructure(responseBOMList.get(0), 0, businessModel.getParameter().getDocType());
     }
 
     /**
@@ -336,7 +376,7 @@ public class SLReportBusinessLogic extends JsonOutput {
      * @param level
      */
     @Override
-    protected void flattenStructure(Object itemData, int level) {
+    protected void flattenStructure(Object itemData, int level, String docType) {
         HashMap<String, Object> itemDataMap = (HashMap) itemData;
         List<HashMap<String, Object>> rootLevelData = new ArrayList<>();
         ArrayList<Object> childrenData = (ArrayList<Object>) itemDataMap.get("bomLines");
@@ -359,13 +399,20 @@ public class SLReportBusinessLogic extends JsonOutput {
             if (attributeList.isEmpty() || attributeList.contains("Qty")) {
                 childDataMap.put("Qty", trimQtyToPrecisionCeiling(childDataMap.get("Qty").toString()));
             }
+            if (drawingDataHolderMap.containsKey(childPhysicalId)) {
+                List<Map<String, String>> drawingList = drawingDataHolderMap.get(childPhysicalId);
+                if(drawingList.size() > 0) {
+                    Map<String, String> drawing = drawingList.get(0);
+                    childDataMap.put("Drawing Number", drawing.get("Drawing Number"));
+                }
+            }
             reportResultsMap.add(childDataMap);
             childLevelData.add(childDataMap);
             updateSummaryReport(childLevel, itemDataMap, childDataMap, "");
             addDrawingToSingleLevelBOM(childPhysicalId, childLevelData, 0);
 
             if (bomLineMap.containsKey(childPhysicalId)) {
-                flattenStructure(bomLineMap.get(childPhysicalId), childLevel);
+                flattenStructure(bomLineMap.get(childPhysicalId), childLevel, docType);
             }
         });
     }
@@ -426,12 +473,13 @@ public class SLReportBusinessLogic extends JsonOutput {
         if (drawingDataHolderMap.containsKey(physicalId)) {
 
             List<Map<String, String>> drawingList = drawingDataHolderMap.get(physicalId);
-            if (drawingList.size() > 1 && level == 0) {
+            if (drawingList.size() >= 1 && level == 0) {
 
                 drawingList.remove(0);
 
             }
             List<HashMap<String, Object>> drawingDataList = new ArrayList<>();
+
             drawingDataHolderMap.get(physicalId).forEach(drawingData -> {
                 HashMap<String, Object> drawingDataObj = new HashMap<>();
 

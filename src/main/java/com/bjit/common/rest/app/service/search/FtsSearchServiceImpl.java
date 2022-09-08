@@ -5,16 +5,11 @@
  */
 package com.bjit.common.rest.app.service.search;
 
-import com.bjit.common.code.utility.security.ContextPasswordSecurity;
-import com.bjit.common.rest.app.service.controller.common.search.validator.CommonSearchValidator;
 import com.bjit.common.rest.app.service.maturity.MaturityChangeService;
-import com.bjit.common.rest.app.service.utilities.DsServiceCall;
-import com.bjit.common.rest.app.service.model.DSsearch.DsItemSearchResponseBean;
 import com.bjit.common.rest.app.service.model.common.ItemSearchDetailsResponseBean;
 import com.bjit.common.rest.app.service.model.common.ItemSearchParamBean;
-import com.bjit.common.rest.app.service.model.common.ItemSearchResponseBean;
+import com.bjit.common.rest.app.service.utilities.DsServiceCall;
 import com.bjit.common.rest.app.service.utilities.FtsSearchUtility;
-import com.bjit.common.rest.app.service.utilities.NullOrEmptyChecker;
 import com.bjit.ewc18x.utils.PropertyReader;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,8 +18,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -138,6 +133,7 @@ public class FtsSearchServiceImpl implements FtsSearchService {
             int resultNumber = Integer.parseInt((PropertyReader.getProperty("fts.search.service.max.item")));
             ObjectMapper mapper = new ObjectMapper();
             Set<String> nameSet = new HashSet<String>();
+            Set<String> titleSet = new HashSet<String>();
             Map<String, Set<String>> nameRevMap = new HashMap<String, Set<String>>();
             Map<String, HashMap<String, String>> detailsMap = new HashMap<String, HashMap<String, String>>();
             Set<String> itemDetailsListSet = new HashSet<>();
@@ -152,8 +148,9 @@ public class FtsSearchServiceImpl implements FtsSearchService {
             String nresult = info.get("nresults").toString();
             LOGGER.info("Total Result : " + nresult);
             if (Integer.parseInt(nresult) == 0) {
-
-                results.add(new ItemSearchDetailsResponseBean(null, "Not Found", null));
+                for (ItemSearchParamBean searchStrng : searchList) {
+                    results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), "Not Found"));
+                }
             } else {
 
                 JSONArray result = object.getJSONArray("results");
@@ -234,6 +231,7 @@ public class FtsSearchServiceImpl implements FtsSearchService {
 
                 member.forEach((item) -> {
                     nameSet.add(item.get("name"));
+                    titleSet.add(item.get("title"));
                     Set<String> revList = new HashSet<String>();
                     if (nameRevMap.containsKey(item.get("name"))) {
                         revList = nameRevMap.get(item.get("name"));
@@ -268,19 +266,194 @@ public class FtsSearchServiceImpl implements FtsSearchService {
 
                     } else {
                         detailsMap.put(item.get("name") + "##" + item.get("name") + item.get("title") + item.get("revision"), itemDetails);
-
                     }
 
                 });
                 Set<HashMap<String, String>> itemDetailsList = new HashSet<HashMap<String, String>>();
-                searchList.forEach((searchStrng) -> {
+                Boolean foundInName = false;
+                for (ItemSearchParamBean searchStrng : searchList) {
                     // member.forEach((item) -> {
-                    if (nameSet.contains(searchStrng.getSearchStr())) {
-                        if (nameRevMap.containsKey(searchStrng.getSearchStr())) {
-                            Set<String> revList = nameRevMap.get(searchStrng.getSearchStr());
-                            revList.forEach((rev) -> {
-                                if (detailsMap.containsKey(searchStrng.getSearchStr() + "##" + rev)) {
-                                    HashMap<String, String> detMap = detailsMap.get(searchStrng.getSearchStr() + "##" + rev);
+                    if (searchStrng.getSearchStr().contains("*")) {
+                        if (searchStrng.getSearchStr().startsWith("*")) {
+                            String searchStrPart = searchStrng.getSearchStr().replace("*", "").toUpperCase();
+                            for (String name : nameSet) {
+                                if (name.toUpperCase().endsWith(searchStrPart)) {
+                                    for (Entry<String, Set<String>> map : nameRevMap.entrySet()) {
+                                        if (map.getKey().toUpperCase().endsWith(searchStrPart)) {
+                                            Set<String> revList = map.getValue();
+                                            revList.forEach((rev) -> {
+                                                for (Entry<String, HashMap<String, String>> map2 : detailsMap.entrySet()) {
+                                                    if (map2.getKey().endsWith("##" + rev)) {
+                                                        HashMap<String, String> detMap = map2.getValue();
+                                                        itemDetailsList.add(detMap);
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+
+                                    if (!itemDetailsListSet.contains(searchStrng.getSearchStr())) {
+                                        itemDetailsListSet.add(searchStrng.getSearchStr());
+                                        List<HashMap<String, String>> targetList = new ArrayList<>(itemDetailsList);
+                                        results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), targetList));
+                                        itemDetailsList.clear();
+                                        foundInName = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!foundInName) {
+                                for (String title : titleSet) {
+                                    if (title.toUpperCase().endsWith(searchStrPart)) {
+                                        detailsMap.forEach((key, val) -> {
+                                            if (key.contains(searchStrPart)) {
+                                                HashMap<String, String> detMap = val;
+                                                itemDetailsList.add(detMap);
+                                            }
+                                        });
+
+                                        if (!itemDetailsListSet.contains(searchStrng.getSearchStr())) {
+                                            itemDetailsListSet.add(searchStrng.getSearchStr());
+                                            List<HashMap<String, String>> targetList = new ArrayList<>(itemDetailsList);
+                                            results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), targetList));
+                                            itemDetailsList.clear();
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            if (searchStrng.getSearchStr().endsWith("*")) {
+                                String searchStrPart = searchStrng.getSearchStr().replace("*", "").toUpperCase();
+                                for (String name : nameSet) {
+                                    if (name.toUpperCase().startsWith(searchStrPart)) {
+                                        for (Entry<String, Set<String>> map : nameRevMap.entrySet()) {
+                                            if (map.getKey().toUpperCase().startsWith(searchStrPart)) {
+                                                Set<String> revList = map.getValue();
+                                                revList.forEach((rev) -> {
+                                                    for (Entry<String, HashMap<String, String>> map2 : detailsMap.entrySet()) {
+                                                        if (map2.getKey().toUpperCase().startsWith(searchStrPart)
+                                                                && map2.getKey().endsWith("##" + rev)) {
+                                                            HashMap<String, String> detMap = map2.getValue();
+                                                            itemDetailsList.add(detMap);
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                        }
+
+                                        if (!itemDetailsListSet.contains(searchStrng.getSearchStr())) {
+                                            itemDetailsListSet.add(searchStrng.getSearchStr());
+                                            List<HashMap<String, String>> targetList = new ArrayList<>(itemDetailsList);
+                                            results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), targetList));
+                                            itemDetailsList.clear();
+                                            foundInName = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (!foundInName) {
+                                    for (String title : titleSet) {
+                                        if (title.toUpperCase().startsWith(searchStrPart)) {
+                                            detailsMap.forEach((key, val) -> {
+                                                if (key.contains(searchStrPart)) {
+                                                    HashMap<String, String> detMap = val;
+                                                    itemDetailsList.add(detMap);
+                                                }
+                                            });
+
+                                            if (!itemDetailsListSet.contains(searchStrng.getSearchStr())) {
+                                                itemDetailsListSet.add(searchStrng.getSearchStr());
+                                                List<HashMap<String, String>> targetList = new ArrayList<>(itemDetailsList);
+                                                results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), targetList));
+                                                itemDetailsList.clear();
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                String[] splittedStr = searchStrng.getSearchStr().split("\\*");
+                                String firstPart = "", lastPart = "";
+                                if (splittedStr.length == 2) {
+                                    firstPart = splittedStr[0].toUpperCase();
+                                    lastPart = splittedStr[1].toUpperCase();
+                                }
+                                for (String name : nameSet) {
+                                    if (name.toUpperCase().startsWith(firstPart) && name.toUpperCase().endsWith(lastPart)) {
+                                        for (Entry<String, Set<String>> map : nameRevMap.entrySet()) {
+                                            if (map.getKey().toUpperCase().startsWith(firstPart) && map.getKey().toUpperCase().endsWith(lastPart)) {
+                                                Set<String> revList = map.getValue();
+                                                for (String rev : revList) {
+                                                    for (Entry<String, HashMap<String, String>> map2 : detailsMap.entrySet()) {
+                                                        if (map2.getKey().toUpperCase().startsWith(firstPart)
+                                                                && map2.getKey().endsWith("##" + rev)) {
+                                                            HashMap<String, String> detMap = map2.getValue();
+                                                            itemDetailsList.add(detMap);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        if (!itemDetailsListSet.contains(searchStrng.getSearchStr())) {
+                                            itemDetailsListSet.add(searchStrng.getSearchStr());
+                                            List<HashMap<String, String>> targetList = new ArrayList<>(itemDetailsList);
+                                            results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), targetList));
+                                            itemDetailsList.clear();
+                                            foundInName = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (!foundInName) {
+                                    for (String title : titleSet) {
+                                        if (title.toUpperCase().startsWith(firstPart) && title.toUpperCase().endsWith(lastPart)) {
+                                            for (Entry<String, HashMap<String, String>> entry : detailsMap.entrySet()) {
+                                                if (entry.getKey().contains(firstPart) && entry.getKey().contains(lastPart)) {
+                                                    HashMap<String, String> detMap = entry.getValue();
+                                                    itemDetailsList.add(detMap);
+                                                }
+                                            }
+
+                                            if (!itemDetailsListSet.contains(searchStrng.getSearchStr())) {
+                                                itemDetailsListSet.add(searchStrng.getSearchStr());
+                                                List<HashMap<String, String>> targetList = new ArrayList<>(itemDetailsList);
+                                                results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), targetList));
+                                                itemDetailsList.clear();
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (itemDetailsListSet.isEmpty()) {
+                            results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), "Not Found"));
+                        }
+                    } else {
+                        if (nameSet.contains(searchStrng.getSearchStr())) {
+                            if (nameRevMap.containsKey(searchStrng.getSearchStr())) {
+                                Set<String> revList = nameRevMap.get(searchStrng.getSearchStr());
+                                revList.forEach((rev) -> {
+                                    if (detailsMap.containsKey(searchStrng.getSearchStr() + "##" + rev)) {
+                                        HashMap<String, String> detMap = detailsMap.get(searchStrng.getSearchStr() + "##" + rev);
+                                        itemDetailsList.add(detMap);
+                                    }
+                                });
+                                if (!itemDetailsListSet.contains(searchStrng.getSearchStr())) {
+                                    itemDetailsListSet.add(searchStrng.getSearchStr());
+                                    List<HashMap<String, String>> targetList = new ArrayList<>(itemDetailsList);
+                                    results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), targetList));
+                                    itemDetailsList.clear();
+                                }
+                            }
+                        } else if (titleSet.contains(searchStrng.getSearchStr())) {
+                            detailsMap.forEach((key, val) -> {
+                                if (key.contains(searchStrng.getSearchStr())) {
+                                    HashMap<String, String> detMap = val;
                                     itemDetailsList.add(detMap);
                                 }
                             });
@@ -290,11 +463,11 @@ public class FtsSearchServiceImpl implements FtsSearchService {
                                 results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), targetList));
                                 itemDetailsList.clear();
                             }
-                        }
-                    } else {
-                        results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), "Not Found"));
+                            } else {
+                                results.add(new ItemSearchDetailsResponseBean(searchStrng.getSearchStr(), "Not Found"));
+                            }
                     }
-                });
+                }
             }
             //   }
 

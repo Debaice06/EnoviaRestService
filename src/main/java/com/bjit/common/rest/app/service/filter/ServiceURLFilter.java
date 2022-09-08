@@ -259,6 +259,8 @@ public class ServiceURLFilter implements Filter {
         BY_PASS_URLS_FROM_FILTER.put("lnIntegration-delete-lock-file", contextPath + "/deleteLockFile");
         BY_PASS_URLS_FROM_FILTER.put("lnIntegration-delete-scheduler-lock-file", contextPath + "/delete_scheduler_lock_file");
         BY_PASS_URLS_FROM_FILTER.put("token", contextPath + "/authentication/*");
+        
+        BY_PASS_URLS_FROM_FILTER.put("mastershipChangeScheduler", contextPath + "/pdm/export/mastershipChangeScheduler");
 
         BY_PASS_URLS_FROM_FILTER.put("swagger", contextPath + "/swagger-ui.html");
         BY_PASS_URLS_FROM_FILTER.put("swagger-jars", contextPath + "/webjars/*");
@@ -285,7 +287,7 @@ public class ServiceURLFilter implements Filter {
         BY_PASS_URLS_FROM_FILTER.put("rnpDownload", contextPath + "/multiLevelBomDataReport/download/*");
         BY_PASS_URLS_FROM_FILTER.put("comos", contextPath + "/comos/*");
         BY_PASS_URLS_FROM_FILTER.put("allBOMAttribute", contextPath + "/allSelectableAttributesForBom");
-        BY_PASS_URLS_FROM_FILTER.put("item-details-search", contextPath + "/valmet/enovia/api/v1/common-search/item/search/result");
+        BY_PASS_URLS_FROM_FILTER.put("item-search", contextPath + "/valmet/enovia/api/v1/common-search/item/*");
         BY_PASS_URLS_FROM_FILTER.put("class-attributes-config-update", contextPath + "/aton/classification/attributes");
         BY_PASS_URLS_FROM_FILTER.put("ln-transfer", contextPath + "/valmet/enovia/api/items/*");
         BY_PASS_URLS_FROM_FILTER.put("ln-dw", contextPath + "/ln/dw/*");
@@ -293,7 +295,12 @@ public class ServiceURLFilter implements Filter {
         BY_PASS_URLS_FROM_FILTER.put("cpqIntegration", contextPath + "/bomExportToCPQ");
         BY_PASS_URLS_FROM_FILTER.put("maturity-state-change-promote", contextPath + "/maturity/stateChange/promote");
         BY_PASS_URLS_FROM_FILTER.put("item-history-fetch", contextPath + "/api/v1/item-history/*");
-
+        BY_PASS_URLS_FROM_FILTER.put("item-history-details", contextPath + "fetch/item-history/details");
+        BY_PASS_URLS_FROM_FILTER.put("ln-service", contextPath + "/valmet/enovia/api/v1/export/ln/*");
+        BY_PASS_URLS_FROM_FILTER.put("drawing-data", contextPath + "/valmet/enovia/api/v1/drawing/data");
+        BY_PASS_URLS_FROM_FILTER.put("encryptData", contextPath + "/secured/encrypt/data");
+        BY_PASS_URLS_FROM_FILTER.put("get-model-by-enoviaItem", contextPath + "/valmet/enovia/api/v1/getModelByEnoviaItem");
+        BY_PASS_URLS_FROM_FILTER.put("Auto-Number-Generator", contextPath + "/autonumber/generate/*");
         HashMap<String, String> publiclyAccessibleURLs = PropertyReader.getProperties(URL_PATTERN, Boolean.TRUE);
 
         BY_PASS_URLS_FROM_FILTER.putAll(publiclyAccessibleURLs);

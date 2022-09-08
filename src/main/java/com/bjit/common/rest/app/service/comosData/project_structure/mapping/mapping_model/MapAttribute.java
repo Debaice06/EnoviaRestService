@@ -13,7 +13,7 @@ import javax.xml.bind.annotation.XmlType;
  *
  * @author BJIT
  */
-@XmlType(propOrder = {"sourceName", "destinationName", "fixedValue", "rangeValues", "dataType", "dataLength", "dateFormat", "date", "description", "isProperty", "selectable", "dataFormat"})
+@XmlType(propOrder = {"sourceName", "destinationName", "fixedValue", "rangeValues", "dataType", "dataLength", "dateFormat", "dataDateFormat", "date", "description", "isProperty", "selectable", "dataFormat"})
 public class MapAttribute {
 
     private String sourceName;
@@ -22,6 +22,7 @@ public class MapAttribute {
     private RangeValues rangeValues;
     private String dataType;
     private Integer dataLength;
+    private String dataDateFormat;
     private String dateFormat;
     private String date;
     private String description;
@@ -58,6 +59,15 @@ public class MapAttribute {
     @XmlElement(name = "date-format")
     public void setDateFormat(String dateFormat) {
         this.dateFormat = dateFormat;
+    }
+
+    public String getDataDateFormat() {
+        return dataDateFormat;
+    }
+
+    @XmlElement(name = "data-date-format")
+    public void setDataDateFormat(String dataDateFormat) {
+        this.dataDateFormat = dataDateFormat;
     }
 
     public String getDate() {

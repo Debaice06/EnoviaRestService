@@ -504,11 +504,11 @@ public class ProductExportServiceImpl implements ProductExportService {
                 for (String pair : keyValuePairs) {
                     String[] entry = pair.split("=");
                     if (entry.length == 2) {
-                        if (entry[1].trim().equalsIgnoreCase("true") || entry[1].trim().equalsIgnoreCase("false")) {
+                        if ((entry[1].trim().equalsIgnoreCase("true") || entry[1].trim().equalsIgnoreCase("false"))&&!entry[0].trim().contains(NAME)&&!entry[0].trim().contains(REVISION)&&!entry[0].trim().contains(TYPE)) {
                             map.put(entry[0].trim(), Boolean.valueOf(entry[1].trim()));
-                        } else if (ewcUtilities.isDouble(entry[1].trim())) {
+                        } else if (ewcUtilities.isDouble(entry[1].trim())&&!entry[0].trim().contains(NAME)&&!entry[0].trim().contains(REVISION)&&!entry[0].trim().contains(TYPE)) {
                             map.put(entry[0].trim(), Float.valueOf(entry[1].trim()));
-                        } else if (ewcUtilities.isIntreger(entry[1].trim())) {
+                        } else if (ewcUtilities.isIntreger(entry[1].trim())&&!entry[0].trim().contains(NAME)&&!entry[0].trim().contains(REVISION)&&!entry[0].trim().contains(TYPE)) {
                             map.put(entry[0].trim(), Integer.valueOf(entry[1].trim()));
                         } else {
                             map.put(entry[0].trim(), entry[1].trim());
@@ -579,7 +579,7 @@ public class ProductExportServiceImpl implements ProductExportService {
                                     map.put(property, map.get(property).toString().replace("^$", ","));
                                 }
                                 if(requestAttribute.contains("description")){
-                                    jsonobject.put("Description", map.get(property));
+                                    jsonobject.put("Description", map.get(property).toString().replace("^@^", "\n"));
                                 }else {
                                 jsonobject.put(requestAttribute, map.get(property));
                                 }
@@ -634,7 +634,7 @@ public class ProductExportServiceImpl implements ProductExportService {
                                 }else if(requestAttribute.contains("Cost editable")){
                                   jsonobject.put("Cost Editable", map.get(attribute));
                                 }else{
-                                  jsonobject.put(requestAttribute, map.get(attribute));
+                                  jsonobject.put(requestAttribute, map.get(attribute).toString().replace("^@^", "\n"));
                                 }
                                 LOGGER.debug("Request attribute is " + requestAttribute + "and attribute is " + map.get(attribute));
                                 break;
@@ -809,8 +809,8 @@ public class ProductExportServiceImpl implements ProductExportService {
                         }
                     }
                     if (requestAttribute.equals("type")) {
-                        if (map.containsKey("Type")) {
-                            jsonobject.put(requestAttribute, map.get("Type"));
+                        if (map.containsKey("type")) {
+                            jsonobject.put(requestAttribute, map.get("type"));
                         } else {
                             LOGGER.debug("Product Type is not exit ");
                             jsonobject.put(requestAttribute, "");
@@ -1069,7 +1069,7 @@ public class ProductExportServiceImpl implements ProductExportService {
         return queryBuilder;
     }
     public String fixNewLine(String query) {
-        String newString=query.replaceAll("[\r\n]+", " ");
+        String newString=query.replaceAll("[\r\n]+", "^@^");
         String[] arr = newString.split("~");
         String finalQuery = "";
         for(String s: arr){

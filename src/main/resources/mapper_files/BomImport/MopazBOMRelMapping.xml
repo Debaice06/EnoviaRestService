@@ -12,6 +12,18 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
+            </attribute>
         </attributes>
     </relationship>
     <relationship FromType="CreateAssembly" name="DELFmiFunctionIdentifiedInstance" discriminator="" ToType="Provide">
@@ -25,6 +37,18 @@
                 <data_format source_format=""></data_format>
                 <description></description>
                 <is_required>true</is_required>
+            </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
             </attribute>
         </attributes>
     </relationship>
@@ -40,6 +64,18 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
+            </attribute>
         </attributes>
     </relationship>
     <relationship FromType="CreateAssembly" name="ProcessInstanceContinuous" discriminator="" ToType="ProcessContinuousCreateMaterial">
@@ -53,6 +89,18 @@
                 <data_format source_format=""></data_format>
                 <description></description>
                 <is_required>true</is_required>
+            </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
             </attribute>
         </attributes>
     </relationship>
@@ -68,6 +116,18 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
+            </attribute>
         </attributes>
     </relationship>
     <relationship FromType="ProcessContinuousCreateMaterial" name="DELFmiFunctionIdentifiedInstance" discriminator="" ToType="Provide">
@@ -81,6 +141,18 @@
                 <data_format source_format=""></data_format>
                 <description></description>
                 <is_required>true</is_required>
+            </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
             </attribute>
         </attributes>
     </relationship>
@@ -96,6 +168,18 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
+            </attribute>
         </attributes>
     </relationship>
     <relationship FromType="ProcessContinuousCreateMaterial" name="ProcessInstanceContinuous" discriminator="" ToType="ProcessContinuousCreateMaterial">
@@ -109,6 +193,18 @@
                 <data_format source_format=""></data_format>
                 <description></description>
                 <is_required>true</is_required>
+            </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
             </attribute>
         </attributes>
     </relationship>
@@ -124,6 +220,18 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
+            </attribute>
         </attributes>
     </relationship>
     <relationship FromType="CreateMaterial" name="DELFmiFunctionIdentifiedInstance" discriminator="" ToType="Provide">
@@ -137,6 +245,18 @@
                 <data_format source_format=""></data_format>
                 <description></description>
                 <is_required>true</is_required>
+            </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
             </attribute>
         </attributes>
     </relationship>
@@ -152,6 +272,18 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
+            </attribute>
         </attributes>
     </relationship>
     <relationship FromType="CreateMaterial" name="ProcessInstanceContinuous" discriminator="" ToType="ProcessContinuousCreateMaterial">
@@ -165,6 +297,18 @@
                 <data_format source_format=""></data_format>
                 <description></description>
                 <is_required>true</is_required>
+            </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
             </attribute>
         </attributes>
     </relationship>
@@ -181,6 +325,18 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
+            </attribute>
         </attributes>
     </relationship>
     
@@ -196,7 +352,6 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
-            
             <attribute>
                 <source_name>Net quantity</source_name>
                 <destination_name>ProcessInstanceContinuous.V_UsageContCoeff</destination_name>
@@ -206,12 +361,24 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
+            </attribute>
         </attributes>
     </relationship>
     
     
     <relationship FromType="ProcessContinuousCreateMaterial" name="DELFmiFunctionIdentifiedInstance" discriminator="" ToType="VAL_VALComponent">
-        <Interfaces>MBOM_MBOMERPInstance</Interfaces>
+        <Interfaces>MBOM_MBOMERPInstance,</Interfaces>
         <attributes>			
             <attribute>
                 <source_name>Position</source_name>
@@ -221,6 +388,18 @@
                 <data_format source_format=""></data_format>
                 <description></description>
                 <is_required>true</is_required>
+            </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
             </attribute>
         </attributes>
     </relationship>
@@ -237,7 +416,6 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
-            
             <attribute>
                 <source_name>Net quantity</source_name>
                 <destination_name>ProcessInstanceContinuous.V_UsageContCoeff</destination_name>
@@ -246,6 +424,18 @@
                 <data_format source_format=""></data_format>
                 <description></description>
                 <is_required>true</is_required>
+            </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
             </attribute>
         </attributes>
     </relationship>
@@ -262,6 +452,18 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
+            </attribute>
         </attributes>
     </relationship>
     
@@ -277,7 +479,6 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
-            
             <attribute>
                 <source_name>Net quantity</source_name>
                 <destination_name>ProcessInstanceContinuous.V_UsageContCoeff</destination_name>
@@ -287,7 +488,18 @@
                 <description></description>
                 <is_required>true</is_required>
             </attribute>
+            <attribute>
+                <source_name>Work Quantity</source_name>
+                <destination_name>RFN_WorkQuantity.RFN_WorkQuantity</destination_name>
+                <data_type>String</data_type>
+                <selectable>attribute[RFN_WorkQuantity.RFN_WorkQuantity]</selectable>
+                <data_format source_format=""></data_format>
+                <description></description>
+                <is_required>false</is_required>
+                <attribute_interfaces>RFN_WorkQuantity</attribute_interfaces>
+                <del_interface_if_data_not_in_req>true</del_interface_if_data_not_in_req>
+                <do_not_add_data_if_req_is_empty>true</do_not_add_data_if_req_is_empty>
+            </attribute>
         </attributes>
     </relationship>
-    
 </relationships>

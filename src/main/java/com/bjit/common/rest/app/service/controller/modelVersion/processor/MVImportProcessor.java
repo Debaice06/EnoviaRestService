@@ -646,7 +646,7 @@ public class MVImportProcessor
                         List<Model> modList = new ArrayList();
                         modList.add(model);
 
-                        Map<String, Map<String, Boolean>> updateMap = mvService.checkForRevisions(modList, queueList, dsCall);
+                        Map<String, Map<String, Boolean>> updateMap = mvService.checkForRevisions(modList, queueList, dsCall, context);
                         if (!updateMap.get(model.getTnr().getName()).get(request.get(i).getItem().getTnr().getRevision())
                                 && !NullOrEmptyChecker.isNull(updateMap.get("latestRevision"))) {
                             if (model.getTnr().getName().equalsIgnoreCase(request.get(i).getItem().getTnr().getName())) {
@@ -728,7 +728,7 @@ public class MVImportProcessor
                     List<Model> modList = new ArrayList();
                     modList.add(model);
 
-                    Map<String, Map<String, Boolean>> updateMap = mvService.checkForRevisions(modList, queueList, dsCall);
+                    Map<String, Map<String, Boolean>> updateMap = mvService.checkForRevisions(modList, queueList, dsCall, context);
                     if (!updateMap.get(model.getTnr().getName()).get(request.get(i).getItem().getTnr().getRevision())
                             && !NullOrEmptyChecker.isNull(updateMap.get("latestRevision"))) {
                         if (model.getTnr().getName().equalsIgnoreCase(request.get(i).getItem().getTnr().getName())) {
@@ -1072,6 +1072,7 @@ public class MVImportProcessor
                     updateMap.put("description", req.getItem().getAttributes().get("description") == null ? "" : req.getItem().getAttributes().get("description"));
                     updateMap.put("status", req.getItem().getAttributes().get("status"));
                     updateMap.put("version", req.getItem().getTnr().getRevision());
+                    updateMap.put("itemCode", req.getItem().getTnr().getName());
                     if (mvService.updateChildItemInfo(context, updateMap)) {
                         MV_CREATION_PROCESSOR.info("Child item updated");
                     }

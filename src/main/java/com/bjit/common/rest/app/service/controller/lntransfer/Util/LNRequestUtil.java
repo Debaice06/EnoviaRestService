@@ -41,8 +41,6 @@ public class LNRequestUtil {
     String parentItem = "";
     String itemName = "";
     //  List<Item> singleObjResultList = new ArrayList<>();
-    protected ObjectTypesAndRelations typesAndRelations = new ObjectTypesAndRelations();
-    protected Map<String, String> typeSelectablesWithOutputName = typesAndRelations.getTypeSelectablesWithOutputName();
 
     public static void validateRequest(LNTransferRequestModel itemTransferModel) {
         if (itemTransferModel == null) {
@@ -96,7 +94,10 @@ public class LNRequestUtil {
         try {
             HashMap<String, String> properties = PropertyReader.getProperties("bom.export.type.map.directory", true);
             String directoryMap = properties.get("CreateAssembly");
-            typesAndRelations = new ObjectTypesAndRelations(directoryMap);
+            //    protected ObjectTypesAndRelations typesAndRelations = new ObjectTypesAndRelations();
+
+            ObjectTypesAndRelations typesAndRelations = new ObjectTypesAndRelations(directoryMap);
+            Map<String, String> typeSelectablesWithOutputName = typesAndRelations.getTypeSelectablesWithOutputName();
             if (NullOrEmptyChecker.isNullOrEmpty(item.getId())) {
                 MqlQueries mqlQuery = new MqlQueries();
                 objectId = mqlQuery.getObjectId(context, item.getTnr().getType(), item.getTnr().getName(), item.getTnr().getRevision());
@@ -117,7 +118,7 @@ public class LNRequestUtil {
             businessObject = new BusinessObject(objectId);
             businessObject.open(context);
 
-            ExpansionWithSelect expandResult = expandObject.expand(context, businessObject, level, this.typesAndRelations);
+            ExpansionWithSelect expandResult = expandObject.expand(context, businessObject, level, typesAndRelations);
             itemName = expandResult.getRootSelectData("name");
             String bundleId = expandResult.getRootSelectData("attribute[TRS_TermID.TRS_TermID]");
             String releasePurpose = expandResult.getRootSelectData("attribute[MBOM_MBOMERP.MBOM_Release_Purpose]");

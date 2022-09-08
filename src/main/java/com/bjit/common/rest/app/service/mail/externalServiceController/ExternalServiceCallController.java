@@ -1,4 +1,4 @@
-package com.bjit.common.rest.app.service.externalServiceController;
+package com.bjit.common.rest.app.service.mail.externalServiceController;
 import com.bjit.ex.integration.serviceactions.DeleteLockFileAction;
 import com.bjit.ex.integration.transfer.actions.TransferAction;
 import java.net.MalformedURLException;

@@ -45,9 +45,6 @@ public class EmailSender {
     public static String transferErrorMessageHeader = ApplicationProperties.getProprtyValue(Constants.errorMessageHeaderKey);
     public static String transferUnrecognizedMessageHeader = ApplicationProperties.getProprtyValue(Constants.unrecognizedMessageHeaderKey);
 
-    Set<String> uniqueItems = new LinkedHashSet<>();
-    List<ResponseResult> uniqueItemsResponseResults = new ArrayList<>();
-
     /**
      * Prepares email body
      *
@@ -60,15 +57,6 @@ public class EmailSender {
         boolean successfullItemMessageFound = false;
         boolean failedItemMessageFound = false;
         boolean unrecognizedMessageFound = false;
-
-//        The items released by the CA approver need to be unique. SO checking and tracking it here.
-        for (ResponseResult responseResult : results) {
-            String item = responseResult.getItem();
-            if (!uniqueItems.contains(item)) {
-                uniqueItems.add(item);
-                uniqueItemsResponseResults.add(responseResult);
-            }
-        }
 
         StringBuilder successfulItemsTable = new StringBuilder("<table border=\"1\">");
         successfulItemsTable.append("<thead>\n"
@@ -93,7 +81,7 @@ public class EmailSender {
         int unrecognizedMessageCounter = 1;
 
 //        Prepares email body table for each unique item based on successful or failed item transfer
-        for (ResponseResult uniqueItemsResponseResult : uniqueItemsResponseResults) {
+        for (ResponseResult uniqueItemsResponseResult : results) {
             String itemName = uniqueItemsResponseResult.getItem();
             String resultText = uniqueItemsResponseResult.getResultText();
             String revision = uniqueItemsResponseResult.getRevision();
@@ -289,10 +277,14 @@ public class EmailSender {
         String toState = item.getAttributes().get("state-to");
         String fromState = item.getAttributes().get("state-from");
         String changeId = "";
-        changeId = businessobjectUtil.getChangeIdFromHistory(businessObject, context);
+        String userFromHistory = "";
         SignatureList signatures = null;
+        changeId = businessobjectUtil.getChangeIdFromHistory(businessObject, context);
+        RESULT_SENDER_LOGGER.info("Change ID for salesforce email sending: " + changeId);
+        userFromHistory = businessobjectUtil.getUserFromHistory(businessObject, context, toState);
+        RESULT_SENDER_LOGGER.info("User from history for salesforce email sending: " + userFromHistory);
         try{
-        signatures = businessObject.getSignatures(context, fromState, toState);
+            signatures = businessObject.getSignatures(context, fromState, toState);
         }
         catch(Exception e){
             
@@ -311,10 +303,12 @@ public class EmailSender {
             for (String user : users) {
                 recipient.add(getEmailAddress(context, user));
             }
+        } else if(!userFromHistory.equalsIgnoreCase("")) {
+            recipient.add(getEmailAddress(context, userFromHistory));
         } else {
             RESULT_SENDER_LOGGER.info("No promote user found. Error mail will be sent to AMS.");
 //            recipients.add(ApplicationProperties.getProprtyValue("ams.mail.recipient"));
-            recipient.add(PropertyReader.getProperty("genetic.email.default.recipient"));
+            recipient.add(PropertyReader.getProperty("generic.email.default.recipient"));
         }
         return recipient;
     }

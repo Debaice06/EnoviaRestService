@@ -10,6 +10,7 @@ import com.bjit.common.rest.app.service.comosData.project_structure.mapping.mapp
 import com.bjit.common.rest.app.service.utilities.NullOrEmptyChecker;
 import com.bjit.ewc18x.utils.PropertyReader;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -17,13 +18,12 @@ import java.util.HashMap;
 import java.util.Optional;
 
 /**
- *
  * @author BJIT
  */
 public class ComosProjectStructureXMLMapUtils {
 
-    private static Mapping mapper;
     public static HashMap<String, String> typeMap;
+    private static Mapping mapper;
 
     private void initializeMapper() {
         try {
@@ -71,16 +71,31 @@ public class ComosProjectStructureXMLMapUtils {
                         final Integer dataLength = elementAttribute.getDataLength();
 
                         if (dataType.equals(Constants.DATE)) {
-                            String dateFormate = Optional.ofNullable(elementAttribute.getDateFormat()).orElse("");
+                            String dateFormat = Optional.ofNullable(elementAttribute.getDateFormat()).orElse("");
                             String mappedDate = Optional.ofNullable(elementAttribute.getDate()).orElse("");
 
                             if (Constants.CURRENT_DATE.equals(mappedDate)) {
                                 Date curDate = new Date();
 
-                                SimpleDateFormat format = new SimpleDateFormat(dateFormate);
+                                SimpleDateFormat format = new SimpleDateFormat(dateFormat);
                                 String formatedDate = format.format(curDate);
 
                                 updateProperties.put(destinationName, formatedDate);
+                                return;
+                            } else {
+                                String sourceValue = taskAttributeValueMap.get(sourceName);
+                                Optional.ofNullable(sourceValue).filter(value -> !value.isEmpty()).ifPresent(value -> {
+                                    try {
+                                        String dataDateFormat = Optional.ofNullable(elementAttribute.getDataDateFormat()).orElse("");
+                                        String systemDateFormat = Optional.ofNullable(elementAttribute.getDateFormat()).orElse("");
+
+                                        Date dataDate = new SimpleDateFormat(dataDateFormat).parse(value);
+                                        String systemDate = new SimpleDateFormat(systemDateFormat).format(dataDate);
+                                        updateProperties.put(destinationName, systemDate);
+                                    } catch (ParseException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                });
                                 return;
                             }
                         }
@@ -95,7 +110,7 @@ public class ComosProjectStructureXMLMapUtils {
                             String destinationValue;
 
                             destinationValue = Optional.ofNullable(Optional.ofNullable(elementAttribute.getRangeValues())
-                                    .orElse(new RangeValues()).getValue())
+                                            .orElse(new RangeValues()).getValue())
                                     .orElse(new ArrayList<>())
                                     .stream()
                                     .filter(rangeValue -> rangeValue.getSrc().equalsIgnoreCase(sourceValue))

@@ -61,7 +61,6 @@ public class DsServiceCall {
             this.passUrl = PropertyReader.getProperty("matrix.context.cas.connection.passport");
             this.user = contextPasswordSecurity.decryptPassword(PropertyReader.getProperty("context.name"));
             this.pass = contextPasswordSecurity.decryptPassword(PropertyReader.getProperty("context.pass"));
-            this.sc = PropertyReader.getProperty("preferred.security.context.dslc");
 
             //create auth object
             this.auth = new Authentication(this.passUrl, this.user, this.pass);

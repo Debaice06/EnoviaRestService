@@ -208,7 +208,7 @@ public class BusinessObjectUtility {
             historyList.add(" history = modify - user: User Agent  time: 6/9/2022 9:39:13 AM  state: Review  Change Id: D8B906390000F3E062A1954300023159  was: ");*/
 
             for (int i = historyList.size() - 1; i >= 0; i--) {
-                if (historyList.get(i).toString().contains("user: User Agent") && historyList.get(i).toString().contains("state: Release") && historyList.get(i).toString().toString().contains("Change Id:   was:")) {
+                if (historyList.get(i).toString().contains("user: User Agent") && historyList.get(i).toString().contains("state: RELEASED") && historyList.get(i).toString().toString().contains("Change Id:   was:")) {
                     result = historyList.get(i).toString();
                     break;
                 }
@@ -222,6 +222,34 @@ public class BusinessObjectUtility {
             BUSINESS_OBJECT_UTILITY_LOGGER.error("History is empty!");
         }
         return result;
+    }
+    
+    public String getUserFromHistory(BusinessObject businessObject, Context context, String toState) {
+
+        String user = "";
+        try {
+            List historyList = businessObject.getHistory(context);
+//            history.between = promote - user: jklalrahab  time: 7/7/2022 3:09:17 PM  state: Review
+            for (int i = historyList.size() - 1; i >= 0; i--) {
+                if (historyList.get(i).toString().contains("promote") && historyList.get(i).toString().contains("state: " + toState)) {
+                    user = historyList.get(i).toString();
+                    break;
+                }
+            }
+            String[] temp = user.split(" ");
+            for(int i=0; i < temp.length; i++){
+                if(temp[i].equals("user:")){
+                    user = temp[i + 1];
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            BUSINESS_OBJECT_UTILITY_LOGGER.error("Could not find historylist for getting user " + e.getMessage());
+        }
+        if ("".equals(user)) {
+            BUSINESS_OBJECT_UTILITY_LOGGER.error("Could not find any user from history");
+        }
+        return user;
     }
 
     public List<String> getUserInformation(Context context, String changeId) throws FrameworkException {

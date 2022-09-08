@@ -414,6 +414,7 @@ public class JasperReportGenerator {
             JASPER_REPORT_GENERATOR_LOGGER.error(MessageFormat.format(PropertyReader.getProperty("report.sub.template.directory.error"), "detail"));
             throw e;
         }
+        if(Boolean.parseBoolean(businessModel.getParameter().getIsSummaryRequired())){
         String summaryReportFile = PropertyReader.getProperty("single.level.summary.template.file.directory");
         try {
             Resource summaryResource = new ClassPathResource(summaryReportFile);
@@ -422,6 +423,7 @@ public class JasperReportGenerator {
             JASPER_REPORT_GENERATOR_LOGGER.error(MessageFormat.format(PropertyReader.getProperty("report.sub.template.directory.error"), "summary"));
             throw e;
         }
+    }
 
         if (Boolean.parseBoolean(businessModel.getParameter().getPrintDelivery())) {
             parameters.put(PropertyReader.getProperty("delivery.main.project.tile"), businessModel.getParameter().getMainProjTitle());

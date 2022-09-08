@@ -163,7 +163,6 @@ public class CommonItemSearchController {
         } finally {
             if (context != null) {
                 context.close();
-                context = null;
             }
         }
     }
@@ -174,13 +173,14 @@ public class CommonItemSearchController {
         Instant startServiceTime = Instant.now();
         IResponse responseBuilder = new CustomResponseBuilder();
         String response = "";
+        Context searchContext = null;
         try {
             List<ItemSearchResponseBean> result = new ArrayList<>();
             List<ItemSearchErrorBean> errors = new ArrayList<>();
-            final Context context = CommonSearchValidator.validateToken(httpRequest.getHeader("token"));
+            searchContext = CommonSearchValidator.validateToken(httpRequest.getHeader("token"));
             COMMON_ITEM_SEARCH_CONTROLLER_LOGGER.info("Executing Common search service========");
             PDMItemSearchProcessor searchProcessor = new PDMItemSearchProcessor();
-            result = searchProcessor.searchItemsByName(context, searchRequest, searchService, errors);
+            result = searchProcessor.searchItemsByName(searchContext, searchRequest, searchService, errors);
 
             if (!NullOrEmptyChecker.isNullOrEmpty(result) && !NullOrEmptyChecker.isNullOrEmpty(errors)) {
                 response = responseBuilder.setData(result).addErrorMessage(errors).setStatus(Status.OK).buildResponse();
@@ -196,6 +196,12 @@ public class CommonItemSearchController {
             response = responseBuilder.addErrorMessage(errors).setStatus(Status.FAILED).buildResponse();
             return new ResponseEntity<>(response, HttpStatus.NOT_ACCEPTABLE);
         } finally {
+
+            if (searchContext != null) {
+                searchContext.close();
+                searchContext = null;
+            }
+
             Instant endServiceTime = Instant.now();
             Duration timeTakenbyService = Duration.between(startServiceTime, endServiceTime);
             COMMON_ITEM_SEARCH_CONTROLLER_LOGGER.info("Time taken by Search Service :" + timeTakenbyService.toMillis());
@@ -239,6 +245,9 @@ public class CommonItemSearchController {
             response = responseBuilder.addErrorMessage(errors).setStatus(Status.FAILED).buildResponse();
             return new ResponseEntity<>(response, HttpStatus.NOT_ACCEPTABLE);
         } finally {
+            if (context != null) {
+                context.close();
+            }
             Instant endServiceTime = Instant.now();
             Duration timeTakenbyService = Duration.between(startServiceTime, endServiceTime);
             COMMON_ITEM_SEARCH_CONTROLLER_LOGGER.info("Time taken by Search Service :" + timeTakenbyService.toMillis());
@@ -275,6 +284,9 @@ public class CommonItemSearchController {
             response = responseBuilder.addErrorMessage(errors).setStatus(Status.FAILED).buildResponse();
             return new ResponseEntity<>(response, HttpStatus.NOT_ACCEPTABLE);
         } finally {
+            if (context != null) {
+                context.close();
+            }
             Instant endServiceTime = Instant.now();
             Duration timeTakenbyService = Duration.between(startServiceTime, endServiceTime);
             COMMON_ITEM_SEARCH_CONTROLLER_LOGGER.info("Time taken by Search Service :" + timeTakenbyService.toMillis());
@@ -312,6 +324,9 @@ public class CommonItemSearchController {
             response = responseBuilder.addErrorMessage(errors).setStatus(Status.FAILED).buildResponse();
             return new ResponseEntity<>(response, HttpStatus.NOT_ACCEPTABLE);
         } finally {
+            if (context != null) {
+                context.close();
+            }
             Instant endServiceTime = Instant.now();
             Duration timeTakenbyService = Duration.between(startServiceTime, endServiceTime);
             COMMON_ITEM_SEARCH_CONTROLLER_LOGGER.info("Time taken by Search Service :" + timeTakenbyService.toMillis());

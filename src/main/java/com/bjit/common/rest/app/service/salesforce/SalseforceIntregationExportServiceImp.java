@@ -43,7 +43,7 @@ public class SalseforceIntregationExportServiceImp implements SalesforceIntregat
     public String getIntregatedMVItemId() throws IOException {
 
         JSONArray finalResponse = new JSONArray();
-        JSONObject response = null;
+        JSONArray response = null;
 
         if (salseforceIntregationExportUtil.isAnyFileExist(xmlFileURL)) {
             //String tokenGenerationResult = salseforceIntregationExportUtil.callingSalesforceTokenGenerationAPI(); getSalesforceAPIToken
@@ -61,11 +61,12 @@ public class SalseforceIntregationExportServiceImp implements SalesforceIntregat
             Map<String, ItemInfo> tnrMV = salseforceIntregationExportUtil.xmlFileToModelSalesForce();
             EmailSender emailSender = new EmailSender();//Initialize class to call it's email transfer methods
             List<ResponseResult> responseResult = new ArrayList();//This holds the information to prepare email body
-            Map<JSONObject, HttpStatus> salesforceAPIResponse = new HashMap<>();//This will hold Salesforce API response JSON and status code
+            Map<JSONArray, HttpStatus> salesforceAPIResponse = new HashMap<>();//This will hold Salesforce API response JSON and status code
             Map<String, List<ResponseResult>> recipients = new HashMap<>();//This map will hold recipient's email address and their corresponding items
             Map<String, ItemInfo> donotTransferItemMap = new HashMap();
-            Set<ItemInfo> serviceDownItemList = new HashSet();
-            Set<ItemInfo> successfulTransferItemList = new HashSet();
+            Map<String, ItemInfo> duplicateItemsMap = new HashMap();
+            Set<ItemInfo> errorItemList = new HashSet();
+            Set<ItemInfo> successfulItemList = new HashSet();
             String productAPINameParam = "";
             Boolean sendToAms = false;
 
@@ -77,14 +78,24 @@ public class SalseforceIntregationExportServiceImp implements SalesforceIntregat
                     Salesforce_Intregation_Service_Logger.info("Error integration due to AUT_Lifecycle_Status for item : " + entry.toString());
                     continue;
                 }
-                productAPINameParam = productAPINameParam + entry.getValue().getName() + ",";
-              }
-              
+                if (!productAPINameParam.contains(entry.getValue().getName())) {
+                    productAPINameParam = productAPINameParam + entry.getValue().getName() + ",";
+                } else {
+                    duplicateItemsMap.put(entry.getKey(), entry.getValue());
+                    salseforceIntregationExportUtil.moveXmlFile("error", entry.getKey());
+                }
+            }
+            productAPINameParam = productAPINameParam.substring(0, productAPINameParam.length() - 1);
+
             for (Map.Entry<String, ItemInfo> entry : donotTransferItemMap.entrySet()) {
+                Salesforce_Intregation_Service_Logger.info("Enovia to Salesforce Transfer Process failed for message field : " + entry.getValue().getName() + " Model Version Product");
+                tnrMV.remove(entry.getKey());
+            }
+            for (Map.Entry<String, ItemInfo> entry : duplicateItemsMap.entrySet()) {
+                Salesforce_Intregation_Service_Logger.info("Enovia to Salesforce Transfer Process failed for duplication : " + entry.getValue().getName() + " Model Version Product");
                 tnrMV.remove(entry.getKey());
             }
             if (!productAPINameParam.equalsIgnoreCase("")) {
-                Boolean successTransfer = false;
                 try {
                     String costUpdateUrl = salseforceIntregationExportUtil.getCostUpdateAPIUrl(productAPINameParam);
                     ResponseEntity<String> costUpdateResult = salseforceIntregationExportUtil.callingCostUpdateAPI(costUpdateUrl);
@@ -95,74 +106,57 @@ public class SalseforceIntregationExportServiceImp implements SalesforceIntregat
                 String url = salseforceIntregationExportUtil.getExportProductAPIUrl(productAPINameParam);
                 JSONObject result = salseforceIntregationExportUtil.getMVItemsInformation(url);
                 JSONObject finalResult = salseforceIntregationExportUtil.getFinalMVItemsInformation(result, tnrMV);
-                
+
                 Salesforce_Intregation_Service_Logger.info("Result of the export product API call : " + finalResult);
 
                 try {
                     salesforceAPIResponse = salseforceIntregationExportUtil.callingSalesforceIntregationAPI(tokenGenerationResult, finalResult.toString());
                 } catch (Exception ex) {
                     Salesforce_Intregation_Service_Logger.error("Salesforce Server Error Occured");
-                    successTransfer = false;
                     for (Map.Entry<String, ItemInfo> entry : tnrMV.entrySet()) {
-                        serviceDownItemList.add(entry.getValue());
+                        errorItemList.add(entry.getValue());
                     }
                 }
 //                Check if the SalesForce service is unavailable. If yes then puts the item in retry items list and 
                 for (int i = 1; i <= Integer.parseInt(retryLimit); i++) {
-                    if (salseforceIntregationExportUtil.isSalesforceServiceAvailable(salesforceAPIResponse).equalsIgnoreCase("200")) {
-                        successTransfer = true;
+                    if (salesforceAPIResponse.size() != 0 && salseforceIntregationExportUtil.isSalesforceServiceAvailable(salesforceAPIResponse).equalsIgnoreCase("200")) {
+                        Map<String, String> failedItemsMap = salseforceIntregationExportUtil.itemsFromApiResponse(salesforceAPIResponse);
+                        for (Map.Entry<String, ItemInfo> entry : tnrMV.entrySet()) {
+                            if (failedItemsMap.containsKey(entry.getValue().getName())) {
+                                entry.getValue().setMessage(failedItemsMap.get(entry.getValue().getName()));
+                                errorItemList.add(entry.getValue());
+                                salseforceIntregationExportUtil.moveXmlFile("error", entry.getKey());
+                                Salesforce_Intregation_Service_Logger.info("Enovia to Salesforce Transfer Process failed for : " + entry.getValue().getName() + " Model Version Product");
+                            } else {
+                                successfulItemList.add(entry.getValue());
+                                salseforceIntregationExportUtil.moveXmlFile("success", entry.getKey());
+                                Salesforce_Intregation_Service_Logger.info("Enovia to Salesforce Transfer Process success for : " + entry.getValue().getName() + " Model Version Product");
+                            }
+                        }
                         break;
                     } else {
-                        Salesforce_Intregation_Service_Logger.info("Salesforce Service Unavailable(503), retry " + i);
+                        Salesforce_Intregation_Service_Logger.info("Error message from salesforce, retry " + i);
                         try {
                             salesforceAPIResponse = salseforceIntregationExportUtil.callingSalesforceIntregationAPI(tokenGenerationResult, finalResult.toString());
                         } catch (Exception ex) {
                             Salesforce_Intregation_Service_Logger.error("Salesforce Server Error Occured");
-                            successTransfer = false;
                             for (Map.Entry<String, ItemInfo> entry : tnrMV.entrySet()) {
-                                serviceDownItemList.add(entry.getValue());
+                                errorItemList.add(entry.getValue());
                             }
                         }
-                        if (i == Integer.parseInt(retryLimit) && salseforceIntregationExportUtil.isSalesforceServiceAvailable(salesforceAPIResponse).equalsIgnoreCase("503")) {
+                        if (salesforceAPIResponse.size() != 0 && i == Integer.parseInt(retryLimit) && salseforceIntregationExportUtil.isSalesforceServiceAvailable(salesforceAPIResponse).equalsIgnoreCase("503")) {
                             sendToAms = true;
-                            successTransfer = false;
                         }
                     }
                 }
 
-                for (Map.Entry<JSONObject, HttpStatus> salesforceResponse : salesforceAPIResponse.entrySet()) {
+                for (Map.Entry<JSONArray, HttpStatus> salesforceResponse : salesforceAPIResponse.entrySet()) {
                     response = salesforceResponse.getKey();
                 }
 
-//                for (Map.Entry<String, ItemInfo> entry : tnrMV.entrySet()) {
-//                    serviceDownItemList.add(entry.getValue());
-//                    if (retryItem.containsKey(entry.getValue().getName())) {
-//                        Integer count = retryItem.get(entry.getValue().getName());
-//                        count++;
-//                        retryItem.put(entry.getValue().getName(), count);
-//                    } else {
-//                        retryItem.put(entry.getValue().getName(), 1);
-//                    }
-//                }
-//                successTransfer = false;
-//
-//            }
-//            for (Map.Entry<String, ItemInfo> entry : tnrMV.entrySet()) {
-////                If the item is retired more times to transfer than the retry limit then it will be marked as error. 
-//                if (retryItem.containsKey(entry.getValue().getName())) {
-//                    if (retryItem.get(entry.getValue().getName()) == Integer.parseInt(retryLimit)) {
-//                        salseforceIntregationExportUtil.moveXmlFile("error", entry.getKey());
-//                        Salesforce_Intregation_Service_Logger.info("Error integration due to retry limit for item : " + entry.toString());
-//                        retryItem.remove(entry.getValue().getName());
-//                        serviceDownItemList.remove(entry.getValue());
-//                        retryTransferItemList.add(entry.getValue());
-//                        successTransfer = false;
-//                    }
-//                }
-//            }
                 Salesforce_Intregation_Service_Logger.info("Response of the Salesforce API call" + response);
                 finalResponse.put(response);
-                
+
                 if (sendToAms) {
                     List<ResponseResult> itemList = new ArrayList();
                     for (Map.Entry<String, ItemInfo> item : tnrMV.entrySet()) {
@@ -172,23 +166,11 @@ public class SalseforceIntregationExportServiceImp implements SalesforceIntregat
                     }
                     recipients.put(PropertyReader.getProperty("salesforce.ams.email"), itemList);
                 }
-                //                Successful and failed Transfer are preocessed here
-                for (Map.Entry<String, ItemInfo> entry : tnrMV.entrySet()) {
-                    if (successTransfer) {
-                        successfulTransferItemList.add(entry.getValue());
-                        salseforceIntregationExportUtil.moveXmlFile("success", entry.getKey());
-                        Salesforce_Intregation_Service_Logger.info("Enovia to Salesforce Transfer Process Successfully Done for : " + entry.getValue().getName() + " Model Version Product");
-                    } else {
-                        serviceDownItemList.add(entry.getValue());
-                        salseforceIntregationExportUtil.moveXmlFile("error", entry.getKey());
-                        Salesforce_Intregation_Service_Logger.info("Enovia to Salesforce Transfer Process Successfully Done for : " + entry.getValue().getName() + " Model Version Product");
-                    }
-                }    
             }
 
 //            Email Sending Part Starts from here
 //            Successful Email Preparation
-            for (ItemInfo item : successfulTransferItemList) {
+            for (ItemInfo item : successfulItemList) {
                 ResponseResult resResponse = new ResponseResult(item.getName(), item.getRevision(), "OK", true);
                 resResponse.setId(item.getId());
                 List<String> recipientEmail = new ArrayList();
@@ -232,8 +214,8 @@ public class SalseforceIntregationExportServiceImp implements SalesforceIntregat
             }
 
 //            Failed Item Transfer due to salesforce server down issue
-            for (ItemInfo item : serviceDownItemList) {
-                ResponseResult resResponse = new ResponseResult(item.getName(), item.getRevision(), PropertyReader.getProperty("salesforce.server.down.message"), false);
+            for (ItemInfo item : errorItemList) {
+                ResponseResult resResponse = new ResponseResult(item.getName(), item.getRevision(), item.getMessage(), false);
                 resResponse.setId(item.getId());
                 List<String> recipientEmail = new ArrayList();
                 try {
@@ -253,27 +235,6 @@ public class SalseforceIntregationExportServiceImp implements SalesforceIntregat
                 }
             }
 
-//            Failed items due to retry limit
-//        for (ItemInfo item : retryTransferItemList) {
-//            ResponseResult resResponse = new ResponseResult(item.getName(), item.getRevision(), PropertyReader.getProperty("salesforce.server.down.message"), false);
-//            resResponse.setId(item.getId());
-//            List<String> recipientEmail = new ArrayList();
-//            try {
-//                recipientEmail = salseforceIntregationExportUtil.emailSending(item);
-//                for (String iter : recipientEmail) {
-//                    if (recipients.containsKey(iter)) {
-//                        responseResult = recipients.get(iter);
-//                    } else {
-//                        responseResult = new ArrayList();
-//                    }
-//                    responseResult.add(resResponse);
-//                    recipients.put(iter, responseResult);
-//                }
-//
-//            } catch (MatrixException ex) {
-//                Salesforce_Intregation_Service_Logger.info("Error message: " + ex.getMessage().toString());
-//            }
-//        }
             String emailSubject = PropertyReader.getProperty("salesforce.email.subject");
             String tableHeader = PropertyReader.getProperty("salesforce.email.tableHeader");
 //            All the recipients will get their emails as per their items release

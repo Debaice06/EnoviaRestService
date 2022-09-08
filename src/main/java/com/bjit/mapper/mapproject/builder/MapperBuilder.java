@@ -5,6 +5,7 @@ import com.bjit.mapper.mapproject.processors.IMapper;
 import com.bjit.mapper.mapproject.processors.MappingXML;
 import com.bjit.mapper.mapproject.xml_mapping_model.Mapping;
 import javax.xml.bind.JAXBException;
+import org.apache.log4j.Logger;
 
 /**
  * Builds the mapper instance by accepting the the type of map. It can be an
@@ -15,7 +16,7 @@ import javax.xml.bind.JAXBException;
  */
 public class MapperBuilder<T> {
 
-    static final org.apache.log4j.Logger MAPPER_BUILDER_LOGGER = org.apache.log4j.Logger.getLogger(MapperBuilder.class.getName());
+    static final Logger MAPPER_BUILDER_LOGGER = Logger.getLogger(MapperBuilder.class);
     private static MapperBuilder mappingBuilder;
 
     private IMapper<T> mapper, xmlMapper;

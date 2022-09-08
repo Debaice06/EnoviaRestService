@@ -38,6 +38,16 @@ public class DownloadController {
         }
     }
 
+    @GetMapping("/hiemlli/{reportName}")
+    public Object downloadHimelliReport(HttpServletResponse response, @PathVariable String reportName) throws Exception {
+        try {
+            return rnpResponseHandler.getDownloadableReport(reportName, response);
+        } catch (Exception exp) {
+            DOWNLOAD_CONTROLLER_LOGGER.error(exp);
+            throw exp;
+        }
+    }
+
     /*@RequestMapping(value = "downloadAsABinaryStream", method = RequestMethod.GET)
     @ResponseBody
     public StreamingResponseBody getSteamingFile(@RequestBody final String filePath, HttpServletResponse response) throws IOException {

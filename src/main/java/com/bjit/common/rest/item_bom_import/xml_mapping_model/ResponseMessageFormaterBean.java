@@ -22,6 +22,7 @@ public class ResponseMessageFormaterBean
     private String errorMessage;
     private String rowSequenceIdentifier;
     private String physicalId;
+    private String successMessage;
 
     public TNR getTnr()
     {
@@ -71,8 +72,14 @@ public class ResponseMessageFormaterBean
         return physicalId;
     }
 
-    public void setPhysicalId(String physicalId)
-    {
+    public void setPhysicalId(String physicalId) {
         this.physicalId = physicalId;
+    }
+    public String getSuccessMessage() {
+        return successMessage;
+    }
+
+    public void setSuccessMessage(String successMessage) {
+        this.successMessage = successMessage;
     }
 }

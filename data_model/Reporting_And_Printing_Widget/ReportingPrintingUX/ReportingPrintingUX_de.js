@@ -43,5 +43,7 @@ define("DS/ReportingPrintingUX/assets/nls/ReportingPrintingUX", {
     RP_ALERT_PRIMARY_SECONDARY_LANGUAGE_SAME: "Primary and Secondary Language can not be same. Please change in Preference Settings!",
     RP_ERROR_MESSAGE_SPECIAL_CHARACTER: "Special characters not allowed!",
     RP_ERROR_MESSAGE_MAX_LENGTH: "Maximum {0} characters allowed!",
-	SRP_MANDATORY_ATTRIBUTE_ERROR: "Name and Title are Mandatory Attribute"
+	SRP_MANDATORY_ATTRIBUTE_ERROR: "Name and Title are Mandatory Attribute",
+    RP_REPORT_GENERATION_BACKGROUND_MESSAGE: "Report will be processed in background. Report download link will be sent in mail after completion of the process",
+    RP_ALERT_DOC_TYPE: "Please select drawing type"
 });

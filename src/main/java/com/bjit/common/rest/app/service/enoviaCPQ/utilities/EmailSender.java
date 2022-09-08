@@ -298,8 +298,17 @@ public class EmailSender {
         String toState = item.getNextState(); // next state
         String fromState = item.getCurrentState(); // current
         String changeId = "";
+        String userFromHistory = "";
+        SignatureList signatures = null;
         changeId = businessobjectUtil.getChangeIdFromHistory(businessObject, context);
-        SignatureList signatures = businessObject.getSignatures(context, fromState, toState);
+        userFromHistory = businessobjectUtil.getUserFromHistory(businessObject, context, toState);
+        
+         try{
+            signatures = businessObject.getSignatures(context, fromState, toState);
+        }
+        catch(Exception e){
+            
+        }
 
         Signature promoteSignature = null;
         if (signatures != null && signatures.size() >= 1) {
@@ -307,20 +316,24 @@ public class EmailSender {
             promoteUserName = promoteSignature.getSigner();
         }
 
-        if (promoteUserName != null && !"".equals(promoteUserName)) {
-            recipient.add(getEmailAddress(context, promoteUserName));
-        } else if (!changeId.equalsIgnoreCase("")) {
-            List<String> users = businessobjectUtil.getUserInformation(context, changeId);
+        if (!changeId.equalsIgnoreCase("")) {
+             List<String> users = businessobjectUtil.getUserInformation(context, changeId);
             for (String user : users) {
                 recipient.add(getEmailAddress(context, user));
-            }
+           }
+        } else if (promoteUserName != null && !"".equals(promoteUserName)) {
+            recipient.add(getEmailAddress(context, promoteUserName));
+            
+        } else if(!userFromHistory.equalsIgnoreCase("")) {
+            recipient.add(getEmailAddress(context, userFromHistory));
         } else {
             RESULT_SENDER_LOGGER.info("No promote user found. Error mail will be sent to AMS.");
 //            recipients.add(ApplicationProperties.getProprtyValue("ams.mail.recipient"));
-            recipient.add(PropertyReader.getProperty("genetic.email.default.recipient"));
+            recipient.add(PropertyReader.getProperty("generic.email.default.recipient"));
         }
         return recipient;
     }
+
 
     /**
      * Getting Email address based on user name

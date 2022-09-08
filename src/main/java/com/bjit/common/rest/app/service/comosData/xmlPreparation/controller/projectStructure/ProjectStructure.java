@@ -28,42 +28,42 @@ import java.io.IOException;
 import java.util.HashMap;
 
 //import static com.bjit.common.rest.app.service.comosData.xmlPreparation.model.validators.RFLVPMValidator.distinctByKey;
-@RestController
-@Validated
-@RequestMapping("/comos/v1")
+//@RestController
+//@Validated
+//@RequestMapping("/comos/v1")
 public class ProjectStructure {
-
-    @Autowired
-    @Qualifier("ComosFileWriter")
-    IComosFileWriter fileWriter;
-
-    @Autowired
-    IJSON json;
-    @Autowired
-    BeanFactory beanFactory;
-
-    @Autowired
-    @Qualifier("ComosFileReader")
-    IFileReader fileReader;
+//
 //    @Autowired
-//    @Qualifier("AssemblyStructurePreparation")
-//    IStructurePreparation<HashMap<String, RFLP>, AssemblyServiceResponse, AssemblyRequestData> structurePreparation;
-//was a texting controller
-    @LogExecutionTime
-    @PostMapping("/export/projectStructure/xml")
-    public String createJAXBPlantModel(@Valid @RequestBody ProjectStructureRequestData requestData) throws IOException {
-      //  HashMap<String, RFLP> prepareStructure = structurePreparation.prepareStructure(requestData);
-
-        String projectStructureData = fileReader.readFile("D:\\COMOS new\\get_project_structure_sample_response.json");
-
-        GsonBuilder builder = new GsonBuilder();
-        builder.serializeNulls();
-        Gson gson = builder.create();
-        ProjectStructureServiceResponse serviceResponse = gson.fromJson(projectStructureData, ProjectStructureServiceResponse.class);
-
-//        ProjectStructureChild projectStructure = serviceResponse.getData().getProjectStructure();
-//        String id = projectStructure.getId();
-
-        return "projectStructureResponseData" + " ....> " ;
-    }
+//    @Qualifier("ComosFileWriter")
+//    IComosFileWriter fileWriter;
+//
+//    @Autowired
+//    IJSON json;
+//    @Autowired
+//    BeanFactory beanFactory;
+//
+//    @Autowired
+//    @Qualifier("ComosFileReader")
+//    IFileReader fileReader;
+////    @Autowired
+////    @Qualifier("AssemblyStructurePreparation")
+////    IStructurePreparation<HashMap<String, RFLP>, AssemblyServiceResponse, AssemblyRequestData> structurePreparation;
+////was a texting controller
+//    @LogExecutionTime
+//    @PostMapping("/export/projectStructure/xml")
+//    public String createJAXBPlantModel(@Valid @RequestBody ProjectStructureRequestData requestData) throws IOException {
+//      //  HashMap<String, RFLP> prepareStructure = structurePreparation.prepareStructure(requestData);
+//
+//        String projectStructureData = fileReader.readFile("D:\\COMOS new\\get_project_structure_sample_response.json");
+//
+//        GsonBuilder builder = new GsonBuilder();
+//        builder.serializeNulls();
+//        Gson gson = builder.create();
+//        ProjectStructureServiceResponse serviceResponse = gson.fromJson(projectStructureData, ProjectStructureServiceResponse.class);
+//
+////        ProjectStructureChild projectStructure = serviceResponse.getData().getProjectStructure();
+////        String id = projectStructure.getId();
+//
+//        return "projectStructureResponseData" + " ....> " ;
+//    }
 }

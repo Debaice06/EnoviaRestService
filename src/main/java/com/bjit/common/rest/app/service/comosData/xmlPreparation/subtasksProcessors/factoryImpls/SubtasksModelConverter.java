@@ -406,6 +406,13 @@ public class SubtasksModelConverter implements IModelConverterAdapter<SubtasksSe
 //                        }
                     comosTaskBean.setActivityStatus("Released");
                     comosTaskBean.setErpType("Activity");
+                    
+                    comosTaskBean.setPlannedStartDate(statusList.getPlannedStartDate());
+                    comosTaskBean.setPlannedEndDate(statusList.getPlannedEndDate());
+                    comosTaskBean.setBaseLineStartDate(statusList.getBaselineStartDate());
+                    comosTaskBean.setBaseLineEndDate(statusList.getBaselineEndDate());
+                    comosTaskBean.setActualStartDate(statusList.getActualStartDate());
+                    comosTaskBean.setActualEndDate(statusList.getActualEndDate());
 
                     taskBeanList.add(comosTaskBean);
                 });

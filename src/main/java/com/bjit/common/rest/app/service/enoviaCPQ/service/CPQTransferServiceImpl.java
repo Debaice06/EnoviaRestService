@@ -8,6 +8,7 @@ package com.bjit.common.rest.app.service.enoviaCPQ.service;
 import com.bjit.common.rest.app.service.bomExport.BomExportUtil;
 import com.bjit.common.rest.app.service.context.CreateContext;
 import com.bjit.common.rest.app.service.enoviaCPQ.model.Item;
+import com.bjit.common.rest.app.service.enoviaCPQ.utilities.EmailSendUtil;
 import com.bjit.common.rest.app.service.enoviaCPQ.utilities.FileProcessorUtils;
 
 import com.bjit.ewc18x.utils.PropertyReader;
@@ -34,6 +35,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  *
@@ -52,6 +54,8 @@ public class CPQTransferServiceImpl implements CPQTransferService {
         String filename = "";
         try {
             FileProcessorUtils fileProcessorUtils = new FileProcessorUtils();
+            HashMap<Item, String> transferItemWithMsgMap = new HashMap<>();
+            String triggerredFileDirectory = PropertyReader.getProperty("cpq.env.config.properties.dir");
 
             HashMap<String, Item> processXMLFiles = new HashMap<>();
             try {
@@ -65,12 +69,18 @@ public class CPQTransferServiceImpl implements CPQTransferService {
                 for (Map.Entry<String, Item> entry : processXMLFiles.entrySet()) {
 
                     filename = entry.getKey();
-                    bomExportJson = getBomExportJson(httpRequest, httpServletResponse, filename, processXMLFiles);
+                    Item itemToCheckMsg = entry.getValue();
+                    if (itemToCheckMsg.getMessage() == null) {
+                        bomExportJson = getBomExportJson(httpRequest, httpServletResponse, filename, processXMLFiles);
+                    }else{
+                           filename = filename+ "=" + itemToCheckMsg.getMessage();
+                    }
+                    
 
                     bomExportBody.put(filename, bomExportJson);
 
                 }
-
+            
             } else {
                 CPQ_TRANSFER_LOGGER.info("No XML file found in the directory!\n\n");
             }
@@ -88,15 +98,19 @@ public class CPQTransferServiceImpl implements CPQTransferService {
         ResponseEntity<String> result = null;
         try {
             CPQ_TRANSFER_LOGGER.info("BOM Response Body : " + bomExportjson.getBody().toString());
+
             String url = PropertyReader.getProperty("enovia.cpq.transfer.url");
+            String receiver = PropertyReader.getProperty("enovia.cpq.transfer.receiver");
+            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url);
+            builder.queryParam("Receiver", receiver);
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> entity = new HttpEntity<String>(bomExportjson.getBody().toString(), headers);
-            result = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+            result = restTemplate.exchange(builder.build().encode().toUri(), HttpMethod.POST, entity, String.class);
         } catch (Exception e) {
-           // CPQ_TRANSFER_LOGGER.error("Error Occurred  : " + e.getMessage());
-            
+            // CPQ_TRANSFER_LOGGER.error("Error Occurred  : " + e.getMessage());
+
             return "";
         }
         return result.getBody();
@@ -133,6 +147,11 @@ public class CPQTransferServiceImpl implements CPQTransferService {
             Logger.getLogger(CPQTransferServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
         } catch (MatrixException ex) {
             Logger.getLogger(CPQTransferServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            if (context != null) {
+                context.close();
+                context = null;
+            }
         }
         return responseEntity;
     }

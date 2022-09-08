@@ -9,11 +9,7 @@ import com.bjit.common.rest.app.service.controller.bom.interfaces.IBomValidator;
 import com.bjit.common.rest.app.service.controller.bom.processor.CommonBOMImportParams;
 import com.bjit.common.rest.app.service.model.createBOM.CreateBOMBean;
 import com.bjit.common.rest.app.service.model.tnr.TNR;
-import com.bjit.common.rest.app.service.utilities.BusinessObjectOperations;
-import com.bjit.common.rest.app.service.utilities.CommonSearch;
-import com.bjit.common.rest.app.service.utilities.CommonUtilities;
-import com.bjit.common.rest.app.service.utilities.DateTimeUtils;
-import com.bjit.common.rest.app.service.utilities.NullOrEmptyChecker;
+import com.bjit.common.rest.app.service.utilities.*;
 import com.bjit.common.rest.item_bom_import.utility.BusinessObjectUtil;
 import com.bjit.common.rest.item_bom_import.utility.bomResponseMessageFormatter.BOMDataCollector;
 import com.bjit.common.rest.item_bom_import.utility.bomResponseMessageFormatter.ChildInfo;
@@ -21,22 +17,19 @@ import com.bjit.common.rest.item_bom_import.utility.bomResponseMessageFormatter.
 import com.bjit.common.rest.item_bom_import.xml_BOM_mapper_model.Attribute;
 import com.bjit.common.rest.item_bom_import.xml_BOM_mapper_model.Relationship;
 import com.bjit.ewc18x.utils.PropertyReader;
-import java.io.IOException;
-import java.text.MessageFormat;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import matrix.db.BusinessObject;
 import matrix.db.Context;
 import matrix.util.MatrixException;
 
+import java.io.IOException;
+import java.text.MessageFormat;
+import java.time.Instant;
+import java.util.*;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 /**
- *
  * @author BJIT
  */
 public final class HagForsBOMValidator implements IBomValidator {
@@ -49,7 +42,6 @@ public final class HagForsBOMValidator implements IBomValidator {
     }
 
     /**
-     *
      * @param businessObjectUtil
      * @param businessObjectOperations
      * @param createBOMBean
@@ -60,7 +52,7 @@ public final class HagForsBOMValidator implements IBomValidator {
      * @throws MatrixException
      */
     @Override
-    public BOMDataCollector bomValidationAndDataCollection(Context context, BusinessObjectUtil businessObjectUtil, BusinessObjectOperations businessObjectOperations, CreateBOMBean createBOMBean, CommonBOMImportParams commonBomImportVariables) throws IOException, MatrixException, Exception {
+    public BOMDataCollector bomValidationAndDataCollection(Context context, BusinessObjectUtil businessObjectUtil, BusinessObjectOperations businessObjectOperations, CreateBOMBean createBOMBean, CommonBOMImportParams commonBomImportVariables) throws Exception {
         List<Relationship> relationshipList = commonBomImportVariables.relationshipList;
         String relName = commonBomImportVariables.relName;
         String interfaceName = commonBomImportVariables.interfaceName;
@@ -138,7 +130,7 @@ public final class HagForsBOMValidator implements IBomValidator {
             String childQuantity = validateChildAttirbutesInTheRequest("Net quantity", lineDataMap, tempChildTNR, parentTNR);
             float childQuantityFloat = Float.parseFloat(childQuantity);
 
-            HAGFORS_BOM_IMPORT_VALIDATOR_LOGGER.debug(tempChildTNR.toString() + " Position " + childPosition);
+            HAGFORS_BOM_IMPORT_VALIDATOR_LOGGER.debug(tempChildTNR + " Position " + childPosition);
             tempChildTNR = null;
 
             TNR childTNR = new TNR(childType, childName, childRev);
@@ -152,9 +144,7 @@ public final class HagForsBOMValidator implements IBomValidator {
             String childUniqueKey = "";
 
             childUniqueKey = childName + "-" + childRev + "-" + childPosition;
-            if (existingChildInfoRelMap.containsKey(childUniqueKey)) {
-                existingChildInfoRelMap.remove(childUniqueKey);
-            }
+            existingChildInfoRelMap.remove(childUniqueKey);
 
             try {
 
@@ -231,6 +221,8 @@ public final class HagForsBOMValidator implements IBomValidator {
                     childInfo.setRelIDList(null);
                 }
                 childInfo.setRelName(relName);
+
+                interfaceName = findOutTheInterfaces(lineDataMap, interfaceName);
                 childInfo.setInterfaceName(interfaceName);
                 childInfo.setParentId(parentObjectId);
                 childInfo.setChildId(childId);
@@ -276,6 +268,7 @@ public final class HagForsBOMValidator implements IBomValidator {
     // # Number of Instances = 1                                                #
     // # Usage Coefficient = NetQuantity                                        #
     // ##########################################################################
+
     /**
      * @param childQuantityFloat
      * @param childInfo
@@ -387,18 +380,104 @@ public final class HagForsBOMValidator implements IBomValidator {
         HashMap<String, String> attributeNameValueMap = new HashMap<>();
         relAttributeList.stream().parallel().forEach((Attribute attribute) -> {
             attribute.setIsRequired(Optional.ofNullable(attribute.getIsRequired()).orElse(Boolean.FALSE));
+            if (Optional.ofNullable(lineDataMap.get(attribute.getSourceName())).isPresent()) {
+                Optional.ofNullable(attribute.getAttributeInterfaces()).ifPresent(interfacesToBeAdded
+                        -> lineDataMap.put("interfacesToBeAdded", interfacesToBeAdded));
+            } else {
+                setInterfaceIfDataIsNotExistInTheReq(lineDataMap, childName, parentName, attribute);
+            }
 
-            Optional.ofNullable(lineDataMap.get(attribute.getSourceName())).filter(attributeData -> !attributeData.isEmpty() && attribute.getIsRequired()).orElseThrow(() -> new RuntimeException(MessageFormat.format(PropertyReader.getProperty("missing.child.attribute.exception"),
-                    "'" + attribute.getSourceName() + "'",
-                    "'" + childName + "'",
-                    "'" + parentName + "'")));
-
-            String jsonAttributeValue = lineDataMap.get(attribute.getSourceName());
-
-            attributeNameValueMap.put(attribute.getDestinationName(), commonUtilities.convertToRealValues(attribute, jsonAttributeValue));
+            addDataIntoTheNamedValueMap(lineDataMap, commonUtilities, attributeNameValueMap, attribute);
         });
 
         return attributeNameValueMap;
+    }
+
+    private void setInterfaceIfDataIsNotExistInTheReq(HashMap<String, String> lineDataMap, String childName, String parentName, Attribute attribute) {
+        if (Optional.ofNullable(attribute.getIsRequired()).isPresent())
+            if (attribute.getIsRequired())
+                throw new RuntimeException(MessageFormat.format(PropertyReader.getProperty("missing.child.attribute.exception"),
+                        "'" + attribute.getSourceName() + "'", "'" + childName + "'", "'" + parentName + "'"));
+            else {
+                /**
+                 * We should not add the extension if the business logic is "DELETE THE EXTENSION IF DATA NOT FOUND
+                 * FROM THE USER REQUEST" Because if we do not add the extension in the extension list then missing
+                 * extensions will be deleted form the next business procedure
+                 */
+                if (Optional.ofNullable(attribute.getDelInterfaceIfDataNotInReq()).isPresent()) {
+                    if (!attribute.getDelInterfaceIfDataNotInReq()) {
+                        lineDataMap.put("interfacesToBeAdded", attribute.getAttributeInterfaces());
+                    }
+                } else {
+                    lineDataMap.put("interfacesToBeAdded", attribute.getAttributeInterfaces());
+                }
+            }
+    }
+
+    private void addDataIntoTheNamedValueMap(HashMap<String, String> lineDataMap, CommonUtilities commonUtilities, HashMap<String, String> attributeNameValueMap, Attribute attribute) {
+        if (Optional.ofNullable(attribute.getDoNotAddDataIfReqIsEmpty()).isPresent()) {
+            if (!attribute.getDoNotAddDataIfReqIsEmpty()) {
+                String jsonAttributeValue = lineDataMap.get(attribute.getSourceName());
+                attributeNameValueMap.put(attribute.getDestinationName(), commonUtilities.convertToRealValues(attribute, jsonAttributeValue));
+            }
+        } else {
+            String jsonAttributeValue = lineDataMap.get(attribute.getSourceName());
+            attributeNameValueMap.put(attribute.getDestinationName(), commonUtilities.convertToRealValues(attribute, jsonAttributeValue));
+        }
+    }
+
+//    private HashMap<String, String> addInterfaceInTheList(HashMap<String, String> lineDataMap, Attribute attribute) {
+//        Optional.ofNullable(attribute.getDelInterfaceIfDataNotInReq())
+//                .ifPresentOrElse((Boolean deleteInterfaceIfDataNotInRequest) -> {
+//                    /**
+//                     * We should not add the extension if the business logic is "DELETE THE EXTENSION IF DATA NOT FOUND
+//                     * FROM THE USER REQUEST" Because if we do not add the extension in the extension list then missing
+//                     * extensions will be deleted form the next business procedure
+//                     */
+//                    if (!deleteInterfaceIfDataNotInRequest) {
+//                        Optional.ofNullable(attribute.getAttributeInterfaces())
+//                                .ifPresent(interfaces -> lineDataMap.put("interfacesToBeAdded", attribute.getAttributeInterfaces()));
+//                    }
+//                }, () -> {
+//                    /**
+//                     * Natural business procedure is to delete the extension which has not come from the user request
+//                     * That's why we are adding this in the extension list
+//                     */
+//                    Optional.ofNullable(attribute.getAttributeInterfaces())
+//                            .ifPresent(interfaces -> lineDataMap.put("interfacesToBeAdded", attribute.getAttributeInterfaces()));
+//                });
+//        return lineDataMap;
+//    }
+
+    private String findOutTheInterfaces(HashMap<String, String> lineDataMap, String listOfInterfaces) {
+
+        String interfacesToBeAdded = Optional.ofNullable(lineDataMap.get("interfacesToBeAdded")).orElse("");
+        lineDataMap.put("interfacesToBeAdded", interfacesToBeAdded);
+
+        List<String> attributeInterfaces = Stream.of(lineDataMap.get("interfacesToBeAdded").split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
+
+        List<String> globalInterfaces = Stream.of(listOfInterfaces.split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
+
+        StringJoiner joiner = new StringJoiner(",");
+
+        attributeInterfaces
+                .stream()
+                .map(String::trim)
+                .filter(interfaceData -> !interfaceData.isEmpty())
+                .forEach((interfaceData) -> joiner.add(interfaceData));
+        globalInterfaces
+                .stream()
+                .map(String::trim)
+                .filter(interfaceData -> !interfaceData.isEmpty())
+                .forEach((interfaceData) -> joiner.add(interfaceData));
+
+        lineDataMap.remove("interfacesToBeAdded");
+
+        return joiner.toString();
     }
 
     private HashMap<String, String> searchChildItem(Context context, TNR childTNR, CommonSearch commonSearch, String childUniqueKey, HashMap<String, String> childInfoIdMap) throws Exception {
@@ -440,7 +519,7 @@ public final class HagForsBOMValidator implements IBomValidator {
         return parentTNR;
     }
 
-    private BusinessObject searchParentItem(Context context, TNR parentTNR, CommonSearch commonSearch) throws MatrixException, Exception {
+    private BusinessObject searchParentItem(Context context, TNR parentTNR, CommonSearch commonSearch) throws Exception {
         try {
             Instant start_find_time = Instant.now();
             List<HashMap<String, String>> parentItemSearchedAttributes = commonSearch.searchItem(context, parentTNR);

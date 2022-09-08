@@ -272,6 +272,7 @@
 		<band height="50" splitType="Stretch">
 			<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.grid.JSSGridBagLayout"/>
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<printWhenExpression><![CDATA[$P{isSummaryRequired}.booleanValue() == true]]></printWhenExpression>
 			<subreport isUsingCache="false" runToBottom="true">
 				<reportElement x="0" y="0" width="960" height="50" uuid="52909843-70de-4204-a670-6acd784f6c07"/>
 				<subreportParameter name="imageLocation">

@@ -7,36 +7,29 @@ package com.bjit.common.rest.app.service.controller.authentication;
 
 import com.bjit.common.code.utility.security.ContextPasswordSecurity;
 import com.bjit.common.rest.app.service.context.CreateContext;
-//import com.bjit.common.rest.app.service.context.CreateContext;
 import com.bjit.common.rest.app.service.utilities.JSON;
 import com.bjit.ewc18x.utils.PropertyReader;
-import java.io.UnsupportedEncodingException;
-import java.security.InvalidKeyException;
+import matrix.db.Context;
+import org.apache.log4j.Logger;
+
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.servlet.http.HttpServletRequest;
-import matrix.db.Context;
-
-//import org.apache.logging.log4j.Logger;
-//import org.apache.logging.log4j.LogManager;
-import org.apache.log4j.Logger;
+import java.io.UnsupportedEncodingException;
+import java.security.InvalidKeyException;
 
 /**
- *
  * @author BJIT
  */
 public final class AuthenticationProcess {
 
     //private static final Logger AUTHENTICATION_PROCESS_LOGGER = LogManager.getLogger(AuthenticationProcess.class);
     private static final Logger AUTHENTICATION_PROCESS_LOGGER = Logger.getLogger(AuthenticationProcess.class);
-
+    private static final String ENCRYPTING_SALT = ")(*&%^&457984651FGHJKL:erfd65!$%^!@$*";
     private String userId;
     private String password;
     private String host;
     private String isCasEnvironment;
-
-    private static final String ENCRYPTING_SALT = ")(*&%^&457984651FGHJKL:erfd65!$%^!@$*";
-
     private String encryptionSalt;
 
     public void AuthenticateUser(HttpServletRequest httpRequest) throws Exception {
@@ -90,59 +83,102 @@ public final class AuthenticationProcess {
         try {
             this.getUserCredentialsFromHttpRequest(httpRequest, host, isCasEnvironment);
 
-            this.setEncryptionSalt(ENCRYPTING_SALT);
-
-            IEncryptionProcessors blowFishAlgorithm = new BlowFishEncryption();
-            blowFishAlgorithm.setSalt(this.getEncryptionSalt());
-
-            AuthenticationUserModel authenticateModel = new AuthenticationUserModel();
-
-            authenticateModel.setUserId(this.getUserId());
-            authenticateModel.setPassword(this.getPassword());
-            authenticateModel.setHost(this.getHost());
-            authenticateModel.setIsCasContext(this.getIsCasEnvironment());
-
-            JSON json = new JSON();
-            String serializedAuthenticationModel = json.serialize(authenticateModel);
-
-            AUTHENTICATION_PROCESS_LOGGER.debug("Encryption has been started");
-            String encryptUserCredentials = this.encryptUserCredentials(blowFishAlgorithm, serializedAuthenticationModel);
-            AUTHENTICATION_PROCESS_LOGGER.debug("Encryption has been completed");
-            return encryptUserCredentials;
+            return getEncryptedUserCredentials();
         } catch (Exception exp) {
             AUTHENTICATION_PROCESS_LOGGER.error("Error occurred due to : " + exp.getMessage());
             throw exp;
         }
     }
-    
-    public String AuthenticateUserAndTokenWithBackEndUser (HttpServletRequest httpRequest, String host, String isCasEnvironment) throws Exception {
+
+    public String AuthenticateUser(HttpServletRequest httpRequest, String host, String isCasEnvironment, Boolean is2ndGeneration) throws Exception {
         try {
+
+            if (is2ndGeneration) {
+                ContextPasswordSecurity contextPasswordSecurity = new ContextPasswordSecurity();
+                String userId = contextPasswordSecurity.decryptPassword(httpRequest.getHeader("userId"));
+                String password = contextPasswordSecurity.decryptPassword(httpRequest.getHeader("password"));
+                setUserCredentials(userId, password, host, isCasEnvironment);
+            } else
+
             this.getUserCredentialsFromHttpRequest(httpRequest, host, isCasEnvironment);
 
-            this.setEncryptionSalt(ENCRYPTING_SALT);
-
-            IEncryptionProcessors blowFishAlgorithm = new BlowFishEncryption();
-            blowFishAlgorithm.setSalt(this.getEncryptionSalt());
-
-            AuthenticationUserModel authenticateModel = new AuthenticationUserModel();
-
-            ContextPasswordSecurity contextPasswordSecurity = new ContextPasswordSecurity();
-            authenticateModel.setUserId(contextPasswordSecurity.decryptPassword(PropertyReader.getProperty("pdm.integration.user.cred.username")));
-            authenticateModel.setPassword(contextPasswordSecurity.decryptPassword(PropertyReader.getProperty("pdm.integration.user.cred.pass")));
-            authenticateModel.setHost(this.getHost());
-            authenticateModel.setIsCasContext(this.getIsCasEnvironment());
-
-            JSON json = new JSON();
-            String serializedAuthenticationModel = json.serialize(authenticateModel);
-
-            AUTHENTICATION_PROCESS_LOGGER.debug("Encryption has been started");
-            String encryptUserCredentials = this.encryptUserCredentials(blowFishAlgorithm, serializedAuthenticationModel);
-            AUTHENTICATION_PROCESS_LOGGER.debug("Encryption has been completed");            
-            return encryptUserCredentials;
+            return getEncryptedUserCredentials();
         } catch (Exception exp) {
             AUTHENTICATION_PROCESS_LOGGER.error("Error occurred due to : " + exp.getMessage());
             throw exp;
         }
+    }
+
+    private String getEncryptedUserCredentials() throws Exception {
+        this.setEncryptionSalt(ENCRYPTING_SALT);
+
+        IEncryptionProcessors blowFishAlgorithm = new BlowFishEncryption();
+        blowFishAlgorithm.setSalt(this.getEncryptionSalt());
+
+        AuthenticationUserModel authenticateModel = new AuthenticationUserModel();
+
+        authenticateModel.setUserId(this.getUserId());
+        authenticateModel.setPassword(this.getPassword());
+        authenticateModel.setHost(this.getHost());
+        authenticateModel.setIsCasContext(this.getIsCasEnvironment());
+
+        JSON json = new JSON();
+        String serializedAuthenticationModel = json.serialize(authenticateModel);
+
+        AUTHENTICATION_PROCESS_LOGGER.debug("Encryption has been started");
+        String encryptUserCredentials = this.encryptUserCredentials(blowFishAlgorithm, serializedAuthenticationModel);
+        AUTHENTICATION_PROCESS_LOGGER.debug("Encryption has been completed");
+        return encryptUserCredentials;
+    }
+
+    public String AuthenticateUserAndTokenWithBackEndUser(HttpServletRequest httpRequest, String host, String isCasEnvironment) throws Exception {
+        try {
+            this.getUserCredentialsFromHttpRequest(httpRequest, host, isCasEnvironment);
+            return getEncryptedCredentials();
+        } catch (Exception exp) {
+            AUTHENTICATION_PROCESS_LOGGER.error("Error occurred due to : " + exp.getMessage());
+            throw exp;
+        }
+    }
+
+    public String AuthenticateUserAndTokenWithBackEndUser(HttpServletRequest httpRequest, String host, String isCasEnvironment, Boolean is2ndGeneration) throws Exception {
+        try {
+            if (is2ndGeneration) {
+                ContextPasswordSecurity contextPasswordSecurity = new ContextPasswordSecurity();
+                String userId = contextPasswordSecurity.decryptPassword(httpRequest.getHeader("userId"));
+                String password = contextPasswordSecurity.decryptPassword(httpRequest.getHeader("password"));
+                setUserCredentials(userId, password, host, isCasEnvironment);
+            } else
+                this.getUserCredentialsFromHttpRequest(httpRequest, host, isCasEnvironment);
+
+            return getEncryptedCredentials();
+        } catch (Exception exp) {
+            AUTHENTICATION_PROCESS_LOGGER.error("Error occurred due to : " + exp.getMessage());
+            throw exp;
+        }
+    }
+
+    private String getEncryptedCredentials() throws Exception {
+        this.setEncryptionSalt(ENCRYPTING_SALT);
+
+        IEncryptionProcessors blowFishAlgorithm = new BlowFishEncryption();
+        blowFishAlgorithm.setSalt(this.getEncryptionSalt());
+
+        AuthenticationUserModel authenticateModel = new AuthenticationUserModel();
+
+        ContextPasswordSecurity contextPasswordSecurity = new ContextPasswordSecurity();
+        authenticateModel.setUserId(contextPasswordSecurity.decryptPassword(PropertyReader.getProperty("pdm.integration.user.cred.username")));
+        authenticateModel.setPassword(contextPasswordSecurity.decryptPassword(PropertyReader.getProperty("pdm.integration.user.cred.pass")));
+        authenticateModel.setHost(this.getHost());
+        authenticateModel.setIsCasContext(this.getIsCasEnvironment());
+
+        JSON json = new JSON();
+        String serializedAuthenticationModel = json.serialize(authenticateModel);
+
+        AUTHENTICATION_PROCESS_LOGGER.debug("Encryption has been started");
+        String encryptUserCredentials = this.encryptUserCredentials(blowFishAlgorithm, serializedAuthenticationModel);
+        AUTHENTICATION_PROCESS_LOGGER.debug("Encryption has been completed");
+        return encryptUserCredentials;
     }
 
     public String AuthenticateUser(String userId, String password, String host, Boolean isCasEnvironment) throws Exception {
@@ -208,6 +244,21 @@ public final class AuthenticationProcess {
         }
     }
 
+    private void setUserCredentials(String userId, String password, String host, String isCasEnvironment) {
+        AUTHENTICATION_PROCESS_LOGGER.debug("--------------- ||| Getting credentials from HTTPHeader process has been started ||| ---------------");
+        AUTHENTICATION_PROCESS_LOGGER.debug("####################################################################################################");
+        try {
+            AUTHENTICATION_PROCESS_LOGGER.info("Searching for user credentials");
+            this.setUserId(userId);
+            this.setPassword(password);
+            this.setHost(host);
+            this.setIsCasEnvironment(isCasEnvironment);
+        } catch (Exception exp) {
+            AUTHENTICATION_PROCESS_LOGGER.error("Error Occurred due to : " + exp.getMessage());
+            throw exp;
+        }
+    }
+
     private void getUserCredentialsFromHttpRequest(HttpServletRequest httpRequest, String host, String isCasEnvironment) {
         //System.out.println("\n");
         AUTHENTICATION_PROCESS_LOGGER.debug("--------------- ||| Getting credentials from HTTPHeader process has been started ||| ---------------");
@@ -237,7 +288,8 @@ public final class AuthenticationProcess {
             this.setPassword(blowFishDecryption.decrypt(this.getPassword()));
             this.setHost(blowFishDecryption.decrypt(this.getHost()));
             this.setIsCasEnvironment(blowFishDecryption.decrypt(this.getIsCasEnvironment()));
-        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException | UnsupportedEncodingException exp) {
+        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException |
+                 UnsupportedEncodingException exp) {
             AUTHENTICATION_PROCESS_LOGGER.error("Error occurred due to : " + exp.getMessage());
             throw exp;
         } finally {
@@ -258,7 +310,8 @@ public final class AuthenticationProcess {
             AuthenticationUserModel objAuthenticationModel = json.deserialize(getAuthenticationModel, AuthenticationUserModel.class);
             return objAuthenticationModel;
 
-        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException | UnsupportedEncodingException exp) {
+        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException |
+                 UnsupportedEncodingException exp) {
             AUTHENTICATION_PROCESS_LOGGER.error("Error occurred due to : " + exp.getMessage());
             throw exp;
         } finally {
@@ -279,7 +332,8 @@ public final class AuthenticationProcess {
             this.setPassword(blowFishDecryption.decrypt(this.getPassword()));
             this.setHost(host);
             this.setIsCasEnvironment(isCas);
-        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException | UnsupportedEncodingException exp) {
+        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException |
+                 UnsupportedEncodingException exp) {
             AUTHENTICATION_PROCESS_LOGGER.error("Error occurred due to : " + exp.getMessage());
             throw exp;
         } finally {
@@ -299,7 +353,8 @@ public final class AuthenticationProcess {
             this.setPassword(blowFishDecryption.decrypt(password));
             this.setHost(host);
             this.setIsCasEnvironment(isCas);
-        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException | UnsupportedEncodingException exp) {
+        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException |
+                 UnsupportedEncodingException exp) {
             AUTHENTICATION_PROCESS_LOGGER.error("Error occurred due to : " + exp.getMessage());
             throw exp;
         } finally {
@@ -396,7 +451,8 @@ public final class AuthenticationProcess {
         AUTHENTICATION_PROCESS_LOGGER.debug("###########################################################################");
         try {
             return blowFishEncryption.encrypt(userCredentials);
-        } catch (InvalidKeyException | UnsupportedEncodingException | IllegalBlockSizeException | BadPaddingException exp) {
+        } catch (InvalidKeyException | UnsupportedEncodingException | IllegalBlockSizeException |
+                 BadPaddingException exp) {
             AUTHENTICATION_PROCESS_LOGGER.error("Error occurred due to : " + exp.getMessage());
             throw exp;
         } finally {

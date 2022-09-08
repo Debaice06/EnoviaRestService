@@ -112,6 +112,30 @@ public class CommonUtilities {
         }
     }
 
+    public Context generateContext(String userId, String password, String host) throws Exception {
+        try {
+            //ContextPasswordSecurity contextPasswordSecurity = new ContextPasswordSecurity();
+
+            AuthenticationUserModel userCredentialsModel = new AuthenticationUserModel();
+
+            // String contextUserid = contextPasswordSecurity.decryptPassword(PropertyReader.getProperty("context.name"));
+            userCredentialsModel.setUserId(userId);
+
+            // String contextPassword = contextPasswordSecurity.decryptPassword(PropertyReader.getProperty("context.pass"));
+            userCredentialsModel.setPassword(password);
+
+            userCredentialsModel.setHost(host);
+            userCredentialsModel.setIsCasContext("true");
+
+            CreateContext generateContext = new CreateContext();
+            Context context = generateContext.getContext(userCredentialsModel.getUserId(), userCredentialsModel.getPassword(), userCredentialsModel.getHost(), Boolean.parseBoolean(userCredentialsModel.getIsCasContext()));
+            return context;
+        } catch (Exception exp) {
+            //TASK_IMPORT_PROCESS.error(exp.getMessage());
+            throw exp;
+        }
+    }
+
     public synchronized void doStartTransaction(Context context) throws RuntimeException, InterruptedException, FrameworkException {
         /*---------------------------------------- ||| Start Transaction ||| ----------------------------------------*/
         Boolean transactionStartErrorOccured = true;

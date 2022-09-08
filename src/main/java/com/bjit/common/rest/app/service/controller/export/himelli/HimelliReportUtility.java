@@ -1,9 +1,34 @@
 package com.bjit.common.rest.app.service.controller.export.himelli;
 
+import com.bjit.common.code.utility.mail.builders.MailModelBuilder;
+import com.bjit.common.code.utility.mail.constants.MailContentType;
+import com.bjit.common.code.utility.mail.impls.Mail;
+import com.bjit.common.code.utility.mail.models.MailModel;
+import com.bjit.common.code.utility.mail.services.IMail;
+import com.bjit.common.code.utility.mail.services.IMailModelBuilder;
+import com.bjit.common.rest.app.service.model.himelli.HimelliModel;
 import com.bjit.common.rest.app.service.utilities.NullOrEmptyChecker;
+import com.bjit.ewc18x.utils.PropertyReader;
+import com.bjit.mapper.mapproject.expand.ObjectTypesAndRelations;
+import com.matrixone.apps.domain.util.FrameworkException;
+import com.matrixone.apps.domain.util.MqlUtil;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.util.ResourceUtils;
+
+import javax.mail.MessagingException;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Unmarshaller;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -11,25 +36,19 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
-import javax.annotation.PostConstruct;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
-
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.springframework.util.ResourceUtils;
-
-import com.bjit.ewc18x.utils.PropertyReader;
+import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 
+@Component
 public class HimelliReportUtility {
+
+    private static final org.apache.log4j.Logger LOGGER = org.apache.log4j.Logger.getLogger(HimelliReportUtility.class);
 
     private static final String TITLE = "Title";
     private static final String TYPE = "Type";
     private static final String VCOL = "vCOL RowTag";
-    private static final String TECHNICALDESIGNATION ="Technical Designation";
+    private static final String TECHNICALDESIGNATION = "Technical Designation";
     private static final String LEVEL = "Level";
     private static final String UNIT_BOM = "UnitBom";
     private static final String UNIT_SALES = "UnitSales";
@@ -37,43 +56,52 @@ public class HimelliReportUtility {
     private static final String SEQUENCE_ROW = "SeqRow";
     private static final String HIMELLI_MAPPER_FILE = "himelli.mapper.file";
     private static final String NO_PROCESS = "NA";
-    private static Map<String, String> typeMap;
-    private int seqRow = 1;
     private static final String DATE_FORMAT = "yyyy-MM-dd_HH-mm-ss";
+    private static Map<String, String> typeMap;
     private static HashMap<String, Attributes> attributes;
+    private static HashMap<String, String> DIRECTORY_MAP;
+    @Value("${himelli.mail.subject}")
+    String mailSubject;
+    private int seqRow = 1;
     private OptionalRowGenarator optionalRowGenarator;
     private CellMasters cellMasters;
+    @Value("${himelli.report.file.generation.location}")
+    private String userHome;
 
-    static {
-        attributes = new HashMap<>();
+
+    private Attributes getHimelliFields() {
+        String mapperFile = PropertyReader.getProperty(HIMELLI_MAPPER_FILE);
+        LOGGER.info("Going to read himelli attribute mapping file.");
+        File file;
+        Attributes himelliFields = null;
         try {
-            attributes.put(HIMELLI_MAPPER_FILE,
-                    HimelliReportUtility.getHimelliFields(PropertyReader.getProperty(HIMELLI_MAPPER_FILE)));
-        } catch (FileNotFoundException | URISyntaxException | JAXBException e) {
-            e.printStackTrace();
-            HimelliLogger.getInstance().printLog(e.getMessage(), LogType.ERROR);
-            throw new RuntimeException(e.getMessage());
+            file = ResourceUtils.getFile("classpath:" + mapperFile);
+            JAXBContext jaxbContext = JAXBContext.newInstance(Attributes.class);
+            Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+            himelliFields = (Attributes) jaxbUnmarshaller.unmarshal(file);
+        } catch (FileNotFoundException | JAXBException e) {
+            LOGGER.error(e);
         }
+        return himelliFields;
     }
 
     private int getSeqRow() {
         return this.seqRow++;
     }
 
-    @PostConstruct
     private Map<String, String> getTypeMap() {
-        HimelliLogger.getInstance().printLog("Creating type mapping for himelli.", LogType.INFO);
+        LOGGER.info("Creating type mapping for himelli.");
         typeMap = new HashMap<>();
         typeMap.put("CreateAssembly", "a");
         typeMap.put("CreateMaterial", "a");
         typeMap.put("Provide", "p");
         typeMap.put("ProcessContinuousProvide", "p");
-        HimelliLogger.getInstance().printLog("Finished type mapping for himelli.", LogType.INFO);
+        LOGGER.info("Finished type mapping for himelli.");
         return typeMap;
     }
 
     /**
-     * this method builds the himelli report bodys, table header and table body
+     * this method builds the himelli report body, table header and table body
      *
      * @param json
      * @param notIncludedAttributes
@@ -84,7 +112,7 @@ public class HimelliReportUtility {
      */
     public String prepareReportTable(Object json, Set<Attribute> notIncludedAttributes) throws URISyntaxException, JAXBException, FileNotFoundException {
         HimelliLogger.getInstance().printLog("notIncludedAttributes: " + notIncludedAttributes.toString(), LogType.INFO);
-        Attributes himelliFields = this.filterAttributes(attributes.get(HIMELLI_MAPPER_FILE), notIncludedAttributes);
+        Attributes himelliFields = getHimelliFields();
         this.optionalRowGenarator = new OptionalRowGenarator(himelliFields);
         this.cellMasters = new CellMasters(himelliFields);
         this.optionalRowGenarator.setCellMasters(this.cellMasters);
@@ -95,14 +123,6 @@ public class HimelliReportUtility {
         return himelliReportBody;
     }
 
-    public static Attributes getHimelliFields(String mapperFile) throws URISyntaxException, JAXBException, FileNotFoundException {
-        HimelliLogger.getInstance().printLog("Going to read himelli attribute mapping file.", LogType.INFO);
-        File file = ResourceUtils.getFile("classpath:" + mapperFile);
-        JAXBContext jaxbContext = JAXBContext.newInstance(Attributes.class);
-        Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-        Attributes himelliFields = (Attributes) jaxbUnmarshaller.unmarshal(file);
-        return himelliFields;
-    }
 
     private List<List<String>> prepareRowData(Attributes himelliFields, Object json) {
         JSONObject jsonObject = (JSONObject) json;
@@ -167,7 +187,6 @@ public class HimelliReportUtility {
      * this method responsible for prepare each data row of hemilli report
      *
      * @param himelliFields - attribute mapper
-     * @param level - current level of object
      * @param row -
      * @param rowObject - bom json object
      * @param mappedTypeValue - enovia object type mapping
@@ -207,7 +226,7 @@ public class HimelliReportUtility {
                     cellContent = (String) rowObject.get(bomObjKey);
                 } else if (himelliHeader.equals("Size")) {
                     cellContent = (String) rowObject.get(bomObjKey);
-                } else if (himelliHeader.equals("Standard")) {
+                } else if (himelliHeader.equals("Type")) {
                     cellContent = (String) rowObject.get(bomObjKey);
                 } else if (himelliHeader.equals("ItemId")) {
                     cellContent = (String) rowObject.get(bomObjKey);
@@ -285,9 +304,9 @@ public class HimelliReportUtility {
         return title;
     }
 
-    public String generateHimelliReportName(String name, String rev) {
+    public String generateHimelliReportName(String type, String name, String rev) {
         StringBuilder fileNameBuilder = new StringBuilder();
-        fileNameBuilder.append(name).append("_").append(rev).append("_").append(formattedDateGenerate()).append("_")
+        fileNameBuilder.append(type).append("_").append(name).append("_").append(rev).append("_").append(formattedDateGenerate()).append("_")
                 .append("enovia").append(".txt");
         HimelliLogger.getInstance().printLog("#### himelli report name: " + fileNameBuilder.toString() + " ####",
                 LogType.INFO);
@@ -343,4 +362,167 @@ public class HimelliReportUtility {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
+    public Boolean isBackgroundProcess(HimelliModel himelliModel) throws NumberFormatException, FrameworkException {
+        try {
+            Long numberOfChildren = getStructureCount(himelliModel);
+            LOGGER.info("Himelli number of child in structure : " + numberOfChildren);
+            himelliModel.setNumberOfChildInTheStructure(numberOfChildren);
+            return numberOfChildren > Long.parseLong(PropertyReader.getProperty("himelli.background.process.large.structure.max.items.count"));
+        } catch (Exception exp) {
+            LOGGER.error(exp.getMessage());
+            throw exp;
+        }
+    }
+
+    private Long getStructureCount(HimelliModel himelliModel) throws NumberFormatException, FrameworkException {
+        try {
+            if (NullOrEmptyChecker.isNullOrEmpty(DIRECTORY_MAP)) {
+                DIRECTORY_MAP = PropertyReader.getProperties("bom.export.type.map.directory", true);
+            }
+            String mapsAbsoluteDirectory = DIRECTORY_MAP.get(himelliModel.getType());
+
+            ObjectTypesAndRelations objectTypesAndRelations = new ObjectTypesAndRelations(mapsAbsoluteDirectory);
+            List<String> relationshipNames = objectTypesAndRelations.getRelationshipNames();
+            StringJoiner relJoiner = new StringJoiner(",");
+            relationshipNames.forEach(relJoiner::add);
+            List<String> typeNames = objectTypesAndRelations.getTypeNames();
+            StringJoiner typeJoiner = new StringJoiner(",");
+            typeNames.forEach(typeJoiner::add);
+
+            String himelliCountQuery;
+            if (!NullOrEmptyChecker.isNullOrEmpty(himelliModel.getObjectId())) {
+                himelliCountQuery = "eval expression 'count TRUE' on expand bus '" + himelliModel.getObjectId() + "' from rel '" + relJoiner + "' type '" + typeJoiner + "' recurse to all";
+            } else {
+                himelliCountQuery = "eval expression 'count TRUE' on expand bus '" + himelliModel.getType() + "' '" + himelliModel.getName() + "' '" + himelliModel.getRev() + "' from rel '" + relJoiner + "' type '" + typeJoiner + "' recurse to all";
+            }
+            LOGGER.info("Himelli number of child in structure count query : " + himelliCountQuery);
+            return Long.parseLong(MqlUtil.mqlCommand(himelliModel.getContext(), himelliCountQuery));
+        } catch (FrameworkException exp) {
+            LOGGER.error(exp.getMessage());
+            throw exp;
+        }
+    }
+
+    public void createAndSaveFile(HimelliModel himelliModel, byte[] himelliReport) {
+        try {
+            String outputFilePath = createOutputDirectory();
+            File myObj = new File(outputFilePath + himelliModel.getRptFileName());
+            if (myObj.createNewFile()) {
+                Path path = Paths.get(outputFilePath + himelliModel.getRptFileName());
+                Files.write(path, himelliReport);
+            } else {
+                LOGGER.info("File already exists.");
+            }
+        } catch (IOException e) {
+            LOGGER.error(e);
+        }
+    }
+
+    public String createOutputDirectory() {
+        String outputFilePath = userHome + File.separator + "generated_reports" + File.separator;
+        File files = new File(outputFilePath);
+        if (!files.exists()) {
+            if (files.mkdirs()) {
+                LOGGER.info("Directories are created.");
+                return outputFilePath;
+            } else {
+                LOGGER.info("Failed to create directories.");
+                return "";
+            }
+        } else {
+            LOGGER.info("Directories already created.");
+            return outputFilePath;
+        }
+    }
+
+    public void removeAttr(String attributeString, HimelliReportProcessor himelliReportProcessing) {
+        List<String> completeAttrList = new ArrayList<>(List.of("Technical Designation", "Type", "name", "Level", "Status", "Title", "Drawing Number", "Weight", "revision", "Material", "Size", "Unit", "item common text", "item purchasing text", "PDM revision", "Term_ID", "DistributionList", "Release purpose", "Width", "Position", "Unique Key", "Standard", "Mastership", "Length", "id", "Unique Key"));
+        String[] attrParam = attributeString.split(",");
+        for (String s : attrParam) {
+            completeAttrList.remove(s);
+        }
+
+        for (String s : completeAttrList) {
+            himelliReportProcessing.removeAttr(s);
+        }
+    }
+
+    public void prepareToSendMail(String sender, HimelliModel himelliModel) {
+        IMail mail = new Mail();
+        IMailModelBuilder mailModelBuilder = new MailModelBuilder();
+
+        //Prepared subject
+        String subject = "[" + getEnvironmentName() + "] [" + himelliModel.getName() + "] " + mailSubject;
+
+        //Building mail object
+        MailModel mailObj = mailModelBuilder.setTo(sender).setSubject(subject).setData(getMailTemplate(subject, prepareReportDownloadLink(himelliModel))).setMailContentType(MailContentType.HTML).build();
+
+        try {
+            //Sending mail with mail object
+            mail.sendMail(mailObj);
+        } catch (MessagingException e) {
+            LOGGER.error(e);
+        }
+    }
+
+    private String getMailTemplate(String subject, String downloadLink) {
+        return "<!DOCTYPE html>\n" +
+                "<html lang=\"en\">\n" +
+                "    <head>\n" +
+                "        <title>" + subject + "</title>\n" +
+                "        <style>\n" +
+                "            .footer {\n" +
+                "                position: fixed;\n" +
+                "                left: 0;\n" +
+                "                bottom: 0;\n" +
+                "                width: 100%;\n" +
+                "                font-weight: bold;\n" +
+                "                font-size: 10px;\n" +
+                "            }\n" +
+                "\n" +
+                "            .footer mark {\n" +
+                "                font-size: 12px;\n" +
+                "            }\n" +
+                "        </style>\n" +
+                "    </head>\n" +
+                "    <body>\n" +
+                "        <div class=\"container\">\n" +
+                "            Hello,\n" +
+                "            <br />\n" +
+                "            Background Process for large report has been completed for this item.<br />\n" +
+                "            <b>Report download link : " + downloadLink + "</b><br />\n" +
+                "            Thanks.<br/>\n" +
+                "        </div>\n" +
+                "        <div class=\"footer\">\n" +
+                "            This email may contain confidential and/or legally privileged information. For any mismatch , please inform concern person immediately\n" +
+                "        </div>\n" +
+                "    </body>\n" +
+                "</html>\n";
+    }
+
+    private String getEnvironmentName() {
+        String environmentName = PropertyReader.getEnvironmentName();
+        String[] envNameParts = environmentName.split("_");
+        return envNameParts.length > 1 ? envNameParts[1] : envNameParts[0];
+    }
+
+    private String prepareReportDownloadLink(HimelliModel himelliModel) {
+        String fileName = himelliModel.getRptFileName();
+        String reportDownloadUrl = null;
+        reportDownloadUrl = getBaseUrl(himelliModel) + PropertyReader.getProperty("himelli.report.download.service") + fileName;
+        reportDownloadUrl = "<a href='" + reportDownloadUrl + "'>" + himelliModel.getName() + "</a>";
+        LOGGER.info(reportDownloadUrl);
+        return reportDownloadUrl;
+    }
+
+    private static String getBaseUrl(HimelliModel himelliModel) {
+        String devMachine = System.getenv("dev_machine");
+        devMachine = Optional.ofNullable(devMachine).filter(devPc -> !devPc.isEmpty()).orElse("");
+        LOGGER.info("Machine : " + devMachine);
+        if ((devMachine.equalsIgnoreCase("local_code_dev_machine")) && (himelliModel.getBaseUrl().contains("localhost") || himelliModel.getBaseUrl().contains("127.0.0.1"))) {
+            return himelliModel.getBaseUrl();
+        } else {
+            return PropertyReader.getProperty("enovia.rest.service.url");
+        }
+    }
 }

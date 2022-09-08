@@ -69,7 +69,7 @@ eval {
 	
 	mql modify policy "VPLM_SMB_Definition"\
     state IN_WORK remove trigger promote action\
-    add trigger promote action emxTriggerManagerBase  input "StateChangeTrigger CustomEnoviaCPQTransferTrigger"
+    add trigger promote action emxTriggerManagerBase  input "StateChangeTrigger"
 	
 
         mql modify policy "VPLM_SMB_Definition"\

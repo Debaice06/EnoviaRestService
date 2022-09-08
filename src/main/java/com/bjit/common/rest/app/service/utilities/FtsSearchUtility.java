@@ -26,21 +26,23 @@ public class FtsSearchUtility {
         queryBuilder = queryBuilder.append("(");
         if (searchType.equalsIgnoreCase("ftsSearch")) {
             if (searchList.size() < 2) {
-                queryBuilder = queryBuilder.append("[ds6w:identifier]:(" + searchList.get(0).getSearchStr() + ")");
+                queryBuilder = queryBuilder.append("([ds6w:identifier]:(" + searchList.get(0).getSearchStr() + ")" + " OR [ds6w:label]:(" + searchList.get(0).getSearchStr() + "))");
             } else {
-                queryBuilder = queryBuilder.append("[ds6w:identifier]:(" + searchList.get(0).getSearchStr() + ") OR ");
+                queryBuilder = queryBuilder.append("([ds6w:identifier]:(" + searchList.get(0).getSearchStr() + ")" + " OR [ds6w:label]:(" + searchList.get(0).getSearchStr() + "))");
                 for (int i = 1; i < searchList.size(); i++) {
-                    queryBuilder = queryBuilder.append("[ds6w:identifier]:(" + searchList.get(i).getSearchStr() + ")");
+                    queryBuilder = queryBuilder.append(" OR ");
+                    queryBuilder = queryBuilder.append("([ds6w:identifier]:(" + searchList.get(i).getSearchStr() + ")" + " OR [ds6w:label]:(" + searchList.get(i).getSearchStr() + "))");
 
                 }
             }
         } else {
             if (searchList.size() < 2) {
-                queryBuilder = queryBuilder.append("[ds6w:identifier]:(" + searchList.get(0).getName() + ")");
+                queryBuilder = queryBuilder.append("([ds6w:identifier]:(" + searchList.get(0).getSearchStr() + ")" + " OR [ds6w:label]:(" + searchList.get(0).getSearchStr() + "))");
             } else {
-                queryBuilder = queryBuilder.append("[ds6w:identifier]:(" + searchList.get(0).getName() + ") OR ");
+                queryBuilder = queryBuilder.append("([ds6w:identifier]:(" + searchList.get(0).getSearchStr() + ")" + " OR [ds6w:label]:(" + searchList.get(0).getSearchStr() + "))");
                 for (int i = 1; i < searchList.size(); i++) {
-                    queryBuilder = queryBuilder.append("[ds6w:identifier]:(" + searchList.get(i).getName() + ")");
+                    queryBuilder = queryBuilder.append(" OR ");
+                    queryBuilder = queryBuilder.append("([ds6w:identifier]:(" + searchList.get(i).getSearchStr() + ")" + " OR [ds6w:label]:(" + searchList.get(i).getSearchStr() + "))");
 
                 }
             }

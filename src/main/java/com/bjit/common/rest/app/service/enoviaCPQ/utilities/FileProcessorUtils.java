@@ -7,10 +7,11 @@ package com.bjit.common.rest.app.service.enoviaCPQ.utilities;
 
 
 import com.bjit.common.rest.app.service.enoviaCPQ.model.Item;
+import com.bjit.common.rest.app.service.enoviaCPQ.model.ItemInfo;
 import com.bjit.ewc18x.utils.PropertyReader;
 import com.bjit.ex.integration.transfer.util.ApplicationProperties;
 import com.bjit.ex.integration.transfer.util.FileDirProcess;
-import com.bjit.ex.integration.transfer.util.ItemInfo;
+//import com.bjit.ex.integration.transfer.util.ItemInfo;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
 import javax.xml.bind.JAXBContext;
@@ -130,6 +131,19 @@ public class FileProcessorUtils {
             throw exp;
         }
     }
+    
+     public ItemInfo jaxbXmlFileToObject(File fileName) throws JAXBException {
+       File xmlFile = fileName;
+        JAXBContext jaxbContext;
+
+        jaxbContext = JAXBContext.newInstance(ItemInfo.class);
+        Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+
+        ItemInfo itemInfo = (ItemInfo) jaxbUnmarshaller.unmarshal(xmlFile);
+        
+
+        return itemInfo;
+    }
 
     public HashMap<String, Item> processXMLFiles() throws Exception {
         String xmlBusinessObjectFileDirectory = PropertyReader.getProperty("cpq.env.config.properties.dir");;
@@ -171,13 +185,15 @@ public class FileProcessorUtils {
                                 File file = fileList.get(i);
                                 ItemInfo itemInfo = new ItemInfo();
                                 FileDirProcess fileDirProcess = new FileDirProcess();
-                                itemInfo = fileDirProcess.parseFile(file);
+                                itemInfo = jaxbXmlFileToObject(file);
                                 Item item = new Item();
-                                item.setName(itemInfo.getItemName());
-                                item.setRevision(itemInfo.getItemRev());
-                                item.setId(itemInfo.getItemId());
+                                item.setName(itemInfo.getName());
+                                item.setRevision(itemInfo.getRevision());
+                                item.setId(itemInfo.getId());
                                 item.setCurrentState(itemInfo.getCurrentState());
+                                item.setMessage(itemInfo.getMessage());
                                 item.setNextState(itemInfo.getNextState());
+                                
                                 itemMap.put(file.getName(), item);
                             }
                             //  processXmlBusinessFile(fileList);

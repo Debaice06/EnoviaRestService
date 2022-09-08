@@ -48,6 +48,7 @@ public class LNTransferServiceImpl implements LNTransferService {
     LNRequestUtil lNRequestUtil = new LNRequestUtil();
     public boolean isService = true;
     LNResponseMessageUtil lNResponseMessageUtil = new LNResponseMessageUtil();
+    LNTransferAction lnTransferAction = new LNTransferAction();
 
     @Override
     public Map<LNResponseMessageFormater, String> itemTransfer(LNTransferRequestModel lnTransferRequestModel, String type, String level) throws Exception, ConnectException {
@@ -58,12 +59,13 @@ public class LNTransferServiceImpl implements LNTransferService {
         LNResponseMessageFormater listErrorTransferResultMap = new LNResponseMessageFormater();
         Set<ResponseMessageFormaterBean> listSuccessItemTransferResultMap = new HashSet<>();
         Set<ResponseMessageFormaterBean> listErrorItemTransferResultMap = new HashSet<>();
-        LNResponseService responseService = new LNResponseServiceImpl();
+        LNResponseServiceImpl responseService = new LNResponseServiceImpl();
         Map<String, String> itemResultMap = new HashMap<>();
         CreateContext createContext = new CreateContext();
         Context context = null;
         LNTransferAction lnTransferAction = new LNTransferAction();
         Item rootitem = new Item();
+        boolean hasBOM = false;
         try {
             context = createContext.getAdminContext();
             for (Item baseitem : lnTransferRequestModel.getItems()) {
@@ -79,7 +81,7 @@ public class LNTransferServiceImpl implements LNTransferService {
                                     //  errorItemList.add(validationErrorMessageFormatter);
                                     continue;
                                 }
-                                itemResultMap = lnTransferAction.initiateTransferToLN(context, item, TransferActionType.ITEMS, isService);
+                                itemResultMap = lnTransferAction.initiateTransferToLN(context, item, TransferActionType.ITEMS, isService, hasBOM);
                                 transferResultMap = lNResponseMessageUtil.getResponseMessageFormatter(item, itemResultMap, type);
 
                             } catch (Exception ex) {
@@ -111,7 +113,7 @@ public class LNTransferServiceImpl implements LNTransferService {
                             //  errorItemList.add(validationErrorMessageFormatter);
                             continue;
                         }
-                        itemResultMap = lnTransferAction.initiateTransferToLN(context, baseitem, TransferActionType.ITEMS, isService);
+                        itemResultMap = lnTransferAction.initiateTransferToLN(context, baseitem, TransferActionType.ITEMS, isService, hasBOM);
                         transferResultMap = lNResponseMessageUtil.getResponseMessageFormatter(baseitem, itemResultMap, type);
 
                     } catch (Exception ex) {
@@ -187,9 +189,10 @@ public class LNTransferServiceImpl implements LNTransferService {
         Context context = null;
         Item rootitem = new Item();
         Set<ResponseMessageFormaterBean> errItemList = new HashSet<>();
-        LNTransferAction lnTransferAction = new LNTransferAction();
+        // LNTransferAction lnTransferAction = new LNTransferAction();
         LNResponseMessageFormater lnResponseMessageFormater = new LNResponseMessageFormater();
-        LNResponseService responseService = new LNResponseServiceImpl();
+        // LNResponseService responseService = new LNResponseServiceImpl();
+        boolean hasBOM = true;
         try {
             context = createContext.getAdminContext();
             for (Item baseitem : lnTransferRequestModel.getItems()) {
@@ -200,6 +203,9 @@ public class LNTransferServiceImpl implements LNTransferService {
                 Map<String, List<Item>> expandedData = lNRequestUtil.getExpandedItem(baseitem, context, type, level);
                 List<Item> expandedItem = expandedData.get("ITEM");
                 List<Item> expandedBOM = expandedData.get("BOM");
+                if (expandedBOM.size() < 1) {
+                    hasBOM = false;
+                }
                 if (expandedItem.size() > 0) {
                     for (Iterator<Item> iterator = expandedItem.iterator(); iterator.hasNext();) {
                         Item item = iterator.next();
@@ -210,9 +216,9 @@ public class LNTransferServiceImpl implements LNTransferService {
                                 continue;
                             }
 
-                            itemResultMap = lnTransferAction.initiateTransferToLN(context, item, TransferActionType.ITEM_BOM, isService);
+                            itemResultMap = lnTransferAction.initiateTransferToLN(context, item, TransferActionType.ITEM_BOM, isService, hasBOM);
                             LN_TRANSFER_SERVICE_IMPL.info("Transfer Calling from Service: " + itemResultMap.size() + item);
-                            transferResultMap = responseService.ResponseList(context, item, itemResultMap, iterator, expandedBOM);
+                            transferResultMap = ResponseList(context, item, itemResultMap, iterator, expandedBOM);
 
                             if (!NullOrEmptyChecker.isNull(transferResultMap.get(SUCCESSFUL_ITEM_LIST))) {
                                 listSuccessItemTransferResultMap.add(transferResultMap.get(SUCCESSFUL_ITEM_LIST));
@@ -314,5 +320,45 @@ public class LNTransferServiceImpl implements LNTransferService {
     @Override
     public void gtsNigtlyUpdateToLN() {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    public Map<String, ResponseMessageFormaterBean> ResponseList(Context context, Item item, Map<String, String> itemResultMap, Iterator<Item> iterator, List<Item> expandedBOM) {
+        Set<ResponseMessageFormaterBean> errorItemList = new HashSet<>();
+        Set<ResponseMessageFormaterBean> successItemList = new HashSet<>();
+        Map<String, ResponseMessageFormaterBean> transferResultMap = new HashMap<>();
+        //   LNTransferAction lnTransferAction = new LNTransferAction();
+        String errorType = itemResultMap.get(item.getTnr().getName().toUpperCase());
+        LN_TRANSFER_SERVICE_IMPL.info("BOM Type Service Call" + errorType);
+        if (expandedBOM.isEmpty()) {
+
+            try {
+                lnTransferAction.initiateTransferToLN(context, item, TransferActionType.ITEMS, isService, false);
+            } catch (Exception ex) {
+                LN_TRANSFER_SERVICE_IMPL.trace(ex);
+                LN_TRANSFER_SERVICE_IMPL.error(ex);
+            }
+            LN_TRANSFER_SERVICE_IMPL.info("Empty Level Item call for BOM Transfer Service .");
+            transferResultMap = lNResponseMessageUtil.getResponseMessageFormatter(item, itemResultMap, "item");
+            iterator.remove();
+        } else if (expandedBOM.size() > 0 && expandedBOM.contains(item)) {
+            LN_TRANSFER_SERVICE_IMPL.info("BOM Transfer Service Calling ....");
+            try {
+                ResponseMessageFormaterBean validationErrorMessageFormatter = LNRequestUtil.validateRequestedItem(context, item);
+                if (validationErrorMessageFormatter != null) {
+                    errorItemList.add(validationErrorMessageFormatter);
+                    // continue;
+                }
+                itemResultMap = lnTransferAction.initiateTransferToLN(context, item, TransferActionType.BOM, isService, true);
+                transferResultMap = lNResponseMessageUtil.getResponseMessageFormatter(item, itemResultMap, "bom");
+
+            } catch (Exception ex) {
+                transferResultMap = lNResponseMessageUtil.getResponseMessageFormatter(item, "bom", ex);
+                LN_TRANSFER_SERVICE_IMPL.trace(ex);
+                LN_TRANSFER_SERVICE_IMPL.error(ex);
+            }
+            iterator.remove();
+        }
+
+        return transferResultMap;
     }
 }

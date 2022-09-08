@@ -57,7 +57,7 @@
                 </attribute>
                 <attribute isProperty="true">
                     <source_name>revision</source_name>
-                    <field_label alt-label="" isPreSelected="false" isVisibleInList="true">revision</field_label>
+                    <field_label alt-label="" isPreSelected="true" isVisibleInList="true">revision</field_label>
                     <data-type>String</data-type>
                     <selectable>revision</selectable>
                     <data-format></data-format>
@@ -395,7 +395,7 @@
                 </attribute>
                 <attribute isProperty="true">
                     <source_name>ENG_Position.ENG_Position</source_name>
-                    <field_label alt-label="" isPreSelected="false" isVisibleInList="true">Position</field_label>
+                    <field_label alt-label="" isPreSelected="true" isVisibleInList="true">Position</field_label>
                     <data-type>String</data-type>
                     <selectable>attribute[ENG_Position.ENG_Position]</selectable>
                     <data-format></data-format>

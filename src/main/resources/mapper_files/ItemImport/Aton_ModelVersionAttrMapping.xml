@@ -51,7 +51,7 @@
                     <selectable></selectable>
                     <insertable></insertable>
                 </attribute>
-                <attribute>
+<!--                <attribute>
                     <source_name>basePrice</source_name>
                     <destination_name>basePrice</destination_name>
                     <values defaultValue="0.0"></values>
@@ -60,8 +60,8 @@
                     <data-format></data-format>
                     <selectable></selectable>
                     <insertable></insertable>
-                </attribute>
-                <attribute>
+                </attribute>-->
+<!--                <attribute>
                     <source_name>ownerGroup</source_name>
                     <destination_name>ownerGroup</destination_name>
                     <values defaultValue="Aton Items"></values>
@@ -70,7 +70,7 @@
                     <data-format></data-format>
                     <selectable></selectable>
                     <insertable></insertable>
-                </attribute>
+                </attribute>-->
                 <attribute>
                     <source_name>MOD_Mastership</source_name>
                     <destination_name>MOD_Mastership</destination_name>
@@ -113,7 +113,7 @@
                     <description></description>
                     <data-type>String</data-type>
                     <data-format></data-format>
-                    <values defaultValue="Active">
+                    <values defaultValue="Undefined">
                         <value src="Active">Active</value>
                         <value src="Phase-out">Phase out</value>
                         <value src="End-of-Life">End of Life</value>
@@ -182,7 +182,7 @@
                     <description></description>
                     <data-type>String</data-type>
                     <data-format></data-format>
-                    <values>
+                    <values defaultValue="Undefined">
                         <value src="Access">Access</value>
                         <value src="CapacityConsumer">CapacityConsumer</value>
                         <value src="CapacityProvider">CapacityProvider</value>
@@ -198,7 +198,7 @@
                     <description></description>
                     <data-type>String</data-type>
                     <data-format></data-format>
-                    <values>
+                    <values defaultValue="Undefined">
                         <value src="Developer">Developer</value>
                         <value src="Perpetual">Perpetual</value>
                         <value src="PerpetualUpgrade">PerpetualUpgrade</value>

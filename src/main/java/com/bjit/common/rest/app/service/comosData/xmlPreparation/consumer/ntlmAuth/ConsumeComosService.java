@@ -7,7 +7,10 @@ package com.bjit.common.rest.app.service.comosData.xmlPreparation.consumer.ntlmA
 
 import com.bjit.common.rest.app.service.aspects.annotations.LogExecutionTime;
 import java.net.Authenticator;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import org.apache.log4j.Logger;

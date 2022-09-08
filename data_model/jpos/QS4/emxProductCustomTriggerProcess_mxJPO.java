@@ -64,48 +64,50 @@ public class emxProductCustomTriggerProcess_mxJPO {
 		}
 		
 		String dir = dirInitial + File.separator + "ModelVersion_" + name + "_" + dateAndTime + ".xml";
-		if(checkAUTLifecycleStatus(ctx,objectId,"Active")&&isMaturityStatusCheck(ctx,objectId,"Release")) {
-		  createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, " ");
-		} else {
-			if((checkAUTLifecycleStatus(ctx,objectId,"Phase out")||checkAUTLifecycleStatus(ctx,objectId,"End of Life"))&&isMaturityStatusCheck(ctx,objectId,"Release")) {
-				if(isAnyModelVersionActive(ctx,name)) {
-					 createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, "other active version is available");
+		if(checkCS(ctx,objectId,"AUTOMATION_INTERNAL")) {
+			if(checkAUTLifecycleStatus(ctx,objectId,"Active")&&isMaturityStatusCheck(ctx,objectId,"Release")) {
+			  createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, " ");
+			} else {
+				if((checkAUTLifecycleStatus(ctx,objectId,"Phase out")||checkAUTLifecycleStatus(ctx,objectId,"End of Life"))&&isMaturityStatusCheck(ctx,objectId,"Release")) {
+					if(isAnyModelVersionActive(ctx,name)) {
+						 createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, "other active version is available");
+						
+					} else {
+						
+						 createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, " ");
+					}
 					
 				} else {
 					
-					 createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, " ");
+					if(checkAUTLifecycleStatus(ctx,objectId,"Pilot")&&isMaturityStatusCheck(ctx,objectId,"Review")) {
+						
+						if(isAnyModelVersionActive(ctx,name)) {
+							createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, "other active version is available");
+						
+						} else {
+						
+							createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, " ");
+						}
+						
+					} else {
+						
+						if(checkAUTLifecycleStatus(ctx,objectId,"Discontinued")&&isMaturityStatusCheck(ctx,objectId,"Obsolete")) {
+						
+						 if(isAnyModelVersionActive(ctx,name)) {
+							createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, "other active version is available");
+						
+						} else {
+						
+							createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, " ");
+						}
+					   
+					   }
+					
 				}
 				
-			} else {
-				
-				if(checkAUTLifecycleStatus(ctx,objectId,"Pilot")&&isMaturityStatusCheck(ctx,objectId,"Review")) {
-					
-					if(isAnyModelVersionActive(ctx,name)) {
-					    createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, "other active version is available");
-					
-				    } else {
-					
-					    createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, " ");
-				    }
-					
-				} else {
-					
-					if(checkAUTLifecycleStatus(ctx,objectId,"Discontinued")&&isMaturityStatusCheck(ctx,objectId,"Obsolete")) {
-					
-				     if(isAnyModelVersionActive(ctx,name)) {
-					    createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, "other active version is available");
-					
-				    } else {
-					
-					    createXmlFileInSpecificDirectory(objectId, currentState, nextState, name, revision, dir, " ");
-				    }
-				   
-				   }
-				
 			}
-			
 		}
-    }
+	}
 }
     public void createXmlFileInSpecificDirectory(String objectId, String currentState, String nextState, String name, String revision, String dir,String message) {
         try {
@@ -177,6 +179,24 @@ public class emxProductCustomTriggerProcess_mxJPO {
         }
         
         return isStatus;
+    }
+	
+	public  boolean checkCS(Context ctx,String objectId, String project) {
+		boolean isProject= false;
+		MQLCommand objMQL = new MQLCommand();
+		String sMQLStatement = "pri bus "+ objectId +" select project dump |"; 
+        if (objectId != null) {
+			try {
+            String result = MqlUtil.mqlCommand(ctx, objMQL, sMQLStatement);
+			if(result.equals(project)){
+				isProject = true;
+			}
+        } catch (Exception ex) {
+     
+        }
+        }
+        
+        return isProject;
     }
 	
 	/*public  boolean isAUTLifeStatusPilot(Context ctx,String objectId) {

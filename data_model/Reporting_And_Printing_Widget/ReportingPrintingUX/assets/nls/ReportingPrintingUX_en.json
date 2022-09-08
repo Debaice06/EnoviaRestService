@@ -47,5 +47,7 @@
     RP_REPORT_GENERATION_ON_GOING: "Report is preparing... please wait!",
     SPR_REPORT_FORMAT_ERROR: "please, Change Report Format to txt",
     RP_REPORT_FORMAT_ERROR: "please, Change Report Format to pdf or xls",
-	SRP_MANDATORY_ATTRIBUTE_ERROR: "Name and Title are Mandatory Attribute"
+	SRP_MANDATORY_ATTRIBUTE_ERROR: "Name and Title are Mandatory Attribute",
+    RP_REPORT_GENERATION_BACKGROUND_MESSAGE: "Report will be processed in background. Report download link will be sent in mail after completion of the process"
+
 }

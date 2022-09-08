@@ -166,7 +166,7 @@
                 
                 <attribute isProperty="true">
                     <source_name>revision</source_name>
-                    <field_label alt-label="" isPreSelected="false" isVisibleInList="true">revision</field_label>
+                    <field_label alt-label="" isPreSelected="true" isVisibleInList="true">revision</field_label>
                     <data-type>String</data-type>
                     <selectable>revision</selectable>
                     <data-format></data-format>
@@ -295,7 +295,7 @@
                 </attribute>
                 <attribute isProperty="true">
                     <source_name>MBOM_MBOMPDM.MBOM_PDM_Revision</source_name>
-                    <field_label alt-label="" isPreSelected="false" isVisibleInList="true">PDM revision</field_label>
+                    <field_label alt-label="" isPreSelected="false" isVisibleInList="false">PDM revision</field_label>
                     <data-type>String</data-type>
                     <selectable>attribute[MBOM_MBOMPDM.MBOM_PDM_Revision]</selectable>
                     <data-format></data-format>
@@ -304,7 +304,7 @@
                 </attribute>
                 <attribute isProperty="true">
                     <source_name>MBOM_MBOMPDM.MBOM_Mastership</source_name>
-                    <field_label alt-label="" isPreSelected="false" isVisibleInList="true">Mastership</field_label>
+                    <field_label alt-label="" isPreSelected="false" isVisibleInList="false">Mastership</field_label>
                     <data-type>String</data-type>
                     <selectable>attribute[MBOM_MBOMPDM.MBOM_Mastership]</selectable>
                     <data-format></data-format>
@@ -1376,15 +1376,7 @@
                 </attribute>
                 <attribute isProperty="true">
                     <source_name>MBOM_MBOMERP.MBOM_Release_Purpose</source_name>
-                    <field_label alt-label="" isPreSelected="false" isVisibleInList="true">Release purpose</field_label>
-                    <data-type>String</data-type>
-                    <selectable>attribute[MBOM_MBOMERP.MBOM_Release_Purpose]</selectable>
-                    <data-format></data-format>
-                    <description></description>
-                </attribute>
-                <attribute isProperty="true">
-                    <source_name>MBOM_MBOMERP.MBOM_Release_Purpose</source_name>
-                    <field_label alt-label="" isPreSelected="false" isVisibleInList="true">Release purpose</field_label>
+                    <field_label alt-label="" isPreSelected="false" isVisibleInList="false">Release purpose</field_label>
                     <data-type>String</data-type>
                     <selectable>attribute[MBOM_MBOMERP.MBOM_Release_Purpose]</selectable>
                     <data-format></data-format>
@@ -1531,7 +1523,7 @@
                 </attribute>
                 <attribute isProperty="true">
                     <source_name>MBOM_MBOMERP.MBOM_Release_Purpose</source_name>
-                    <field_label alt-label="" isPreSelected="false" isVisibleInList="true">Release purpose</field_label>
+                    <field_label alt-label="" isPreSelected="false" isVisibleInList="false">Release purpose</field_label>
                     <data-type>String</data-type>
                     <selectable>attribute[MBOM_MBOMERP.MBOM_Release_Purpose]</selectable>
                     <data-format></data-format>
@@ -1556,7 +1548,7 @@
                 </attribute>
                 <attribute isProperty="true">
                     <source_name>MBOM_MBOMPDM.MBOM_PDM_Revision</source_name>
-                    <field_label alt-label="" isPreSelected="false" isVisibleInList="true">PDM revision</field_label>
+                    <field_label alt-label="" isPreSelected="false" isVisibleInList="false">PDM revision</field_label>
                     <data-type>String</data-type>
                     <selectable>attribute[MBOM_MBOMPDM.MBOM_PDM_Revision]</selectable>
                     <data-format></data-format>
@@ -1580,7 +1572,7 @@
                 </attribute>
                 <attribute isProperty="false">
                     <source_name>MBOM_MBOMERPInstance.MBOM_Position</source_name>
-                    <field_label alt-label="" isPreSelected="false" isVisibleInList="true">Position</field_label>
+                    <field_label alt-label="" isPreSelected="true" isVisibleInList="true">Position</field_label>
                     <data-type>String</data-type>
                     <selectable>attribute[MBOM_MBOMERPInstance.MBOM_Position]</selectable>
                     <data-format></data-format>
@@ -1629,7 +1621,7 @@
                 </attribute>
                 <attribute isProperty="false">
                     <source_name>MBOM_MBOMERPInstance.MBOM_Position</source_name>
-                    <field_label alt-label="" isPreSelected="false" isVisibleInList="true">Position</field_label>
+                    <field_label alt-label="" isPreSelected="true" isVisibleInList="true">Position</field_label>
                     <data-type>String</data-type>
                     <selectable>attribute[MBOM_MBOMERPInstance.MBOM_Position]</selectable>
                     <data-format></data-format>

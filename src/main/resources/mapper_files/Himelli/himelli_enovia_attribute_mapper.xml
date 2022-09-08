@@ -49,7 +49,7 @@
         <dest>Size</dest>
     </attribute>
     <attribute>
-        <source>Standard</source>
+        <source>Type</source>
         <dest>Standard</dest>
     </attribute>
     <attribute>

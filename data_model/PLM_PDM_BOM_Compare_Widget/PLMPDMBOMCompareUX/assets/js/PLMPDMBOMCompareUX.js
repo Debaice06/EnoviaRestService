@@ -159,15 +159,23 @@ define("VALMET/PLMPDMBOMCompareUX/PLMPDMBOMCompareUX", ["DS/ENO6WPlugins/jQuery"
             var bomLevelPref = {
                 type: "range",
                 name: "bomLevel",
-                label: "Maximum Expand Limit",
-                defaultValue: widget.getValue("bomLevel") || 1,
+                label: "BOM Expand Level",
+                defaultValue: widget.getValue("bomLevel") || 5,
                 min: 1,
-                max: 5,
-                step: 1,
-                onClick: "onPreferenceClick",
-                onChange: "onPreferenceClick"
+                max: 99,
+                step: 1
             };
             widget.addPreference(bomLevelPref);
+            var UITreeExpandLevelPref = {
+                type: "range",
+                name: "UITreeExpandLevel",
+                label: "UI Tree Expand Level",
+                defaultValue: widget.getValue("UITreeExpandLevel") || 1,
+                min: 1,
+                max: 99,
+                step: 1
+            };
+            widget.addPreference(UITreeExpandLevelPref);
             var y = {
                 name: "attributes_not_shown",
                 type: "hidden",
@@ -195,8 +203,7 @@ define("VALMET/PLMPDMBOMCompareUX/PLMPDMBOMCompareUX", ["DS/ENO6WPlugins/jQuery"
                     rejectFunction("Enovia Rest Service URL not defined in Configuration file");
                 } else {
                     var url = WidgetConfiguration.BC_ENOVIA_REST_SERVICE_URL + WidgetConfiguration.BC_BOM_COMPARISON_SERVICE_URL;
-                    var BOMExpandLevel = 5;
-                    url += "expandLevel=" + BOMExpandLevel;
+                    url += "expandLevel=" + widget.getValue("bomLevel");
                     if (showDiff) {
                         url += "&mode=diffonly";
                     }
@@ -441,14 +448,17 @@ define("VALMET/PLMPDMBOMCompareUX/PLMPDMBOMCompareUX", ["DS/ENO6WPlugins/jQuery"
             }
         },
         expandCompareTree: function () {
-            var maxExpansionLevel = parseInt(PreferenceUtil.get("bomLevel"));
+            var maxBOMExpandLevel = parseInt(PreferenceUtil.get("bomLevel"));
+            var maxNodeExpandLevel = parseInt(PreferenceUtil.get("UITreeExpandLevel"));
+            var expandLevel = maxNodeExpandLevel > maxBOMExpandLevel ? maxBOMExpandLevel : maxNodeExpandLevel;
+
             jQuery("#structure-treetable-left").fancytree("getRootNode").visit(function (node) {
-                if (node.getLevel() <= maxExpansionLevel) {
+                if (node.getLevel() <= expandLevel) {
                     node.setExpanded(true);
                 }
             });
             jQuery("#structure-treetable-right").fancytree("getRootNode").visit(function (node) {
-                if (node.getLevel() <= maxExpansionLevel) {
+                if (node.getLevel() <= expandLevel) {
                     node.setExpanded(true);
                 }
             });

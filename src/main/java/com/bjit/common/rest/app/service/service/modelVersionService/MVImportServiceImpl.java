@@ -698,7 +698,7 @@ public class MVImportServiceImpl implements MVImportService {
     @Override
     public Map<String, Map<String, Boolean>> checkForRevisions(
             List<Model> models, Map<String, List<String>> queueList,
-            DsServiceCall dsCall) throws Exception {
+            DsServiceCall dsCall, Context context) throws Exception {
         String baseUrl = PropertyReader.getProperty("matrix.context.cas.connection.host.dslc");
 //        String securityContext = PropertyReader.getProperty("aton.security.context.dslc");
 
@@ -715,6 +715,21 @@ public class MVImportServiceImpl implements MVImportService {
             for (Model m : models) {
                 if (m.getModelExists()) {
                     modelIds.add(m.getModelInfo().getPhysicalid());
+                }
+            }
+
+            if (!source.equalsIgnoreCase(PropertyReader.getProperty("aton.integration.source"))) {
+                CommonSearch search = new CommonSearch();
+                for (String mv : modelIds) {
+                    List<String> selectList = new ArrayList();
+                    selectList.add("attribute[MOD_Mastership]");
+                    HashMap<String, String> whereMap = new HashMap();
+                    whereMap.put("physicalid", mv);
+
+                    List<HashMap<String, String>> result = search.searchItem(context, new TNR(), whereMap, selectList);
+                    if (result.get(0).get("attribute[MOD_Mastership]").equalsIgnoreCase(PropertyReader.getProperty("aton.integration.source"))) {
+                        throw new Exception("Items with mastership 'ATON' can not be modified.");
+                    }
                 }
             }
 
@@ -1030,7 +1045,9 @@ public class MVImportServiceImpl implements MVImportService {
         if (!NullOrEmptyChecker.isNullOrEmpty(param.get("mastership"))) {
             attributeValue.put("MBOM_MBOMATON.MBOM_Mastership", param.get("mastership"));
         }
-        attributeValue.put("MBOM_MBOMATON.MBOM_AUTLifecycleStatus", param.get("status"));
+        if (!NullOrEmptyChecker.isNullOrEmpty(param.get("itemCode"))) {
+            attributeValue.put("MBOM_MBOMATON.MBOM_ItemCode", param.get("itemCode"));
+        }
         attributeValue.put("MBOM_MBOMATON.MBOM_AtonVersion", param.get("version"));
         if (!NullOrEmptyChecker.isNull(owner)) {
             attributeValue.put("owner", owner);
@@ -1135,8 +1152,10 @@ public class MVImportServiceImpl implements MVImportService {
             // Request Bean preparation
             List<ModifyRequestModel> reqModelList = new ArrayList<ModifyRequestModel>();
 
+            String undefinedError = "";
             List<HashMap<String, String>> classList = new ArrayList();
-            classParams.forEach((param) -> {
+
+            for (HashMap<String, String> param : classParams) {
                 ModifyRequestModel reqModel = new ModifyRequestModel();
                 com.bjit.common.code.utility.dsapi.ipclassification.classifiedItem.model.ReferencedObject referencedObject = new com.bjit.common.code.utility.dsapi.ipclassification.classifiedItem.model.ReferencedObject();
                 referencedObject.setIdentifier(param.get("mvPhysicalId"));
@@ -1159,12 +1178,15 @@ public class MVImportServiceImpl implements MVImportService {
 
                     List<String> classAttributes = Arrays.asList(param.get("classAttributes").split(",", -1));
 
-                    param.entrySet().forEach(entry -> {
+                    for (Entry<String, String> entry : param.entrySet()) {
                         System.out.println(entry.getKey() + " " + entry.getValue());
                         if (classAttributes.contains(entry.getKey())) {
                             attributesMap.put(entry.getKey(), entry.getValue());
+                            if (entry.getValue().equalsIgnoreCase("Undefined")) {
+                                undefinedError += "'" + entry.getKey() + "' has unsupported value.";
+                            }
                         }
-                    });
+                    }
                     //attributesMap.put("Sales statistical group SSG", "test value");
                 } catch (Exception ex) {
                     Logger.getLogger(MVImportServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
@@ -1174,7 +1196,7 @@ public class MVImportServiceImpl implements MVImportService {
                 reqModel.setAttributes(attributesMap);
 
                 reqModelList.add(reqModel);
-            });
+            }
 
             ModifyAttributesService modify = new ModifyAttributesServiceImpl(baseUrl,
                     service.getSimpleHttpClient().getCookieStore(), reqHeaders);
@@ -1186,12 +1208,22 @@ public class MVImportServiceImpl implements MVImportService {
 
                 if (!NullOrEmptyChecker.isNullOrEmpty(response.getMember())) {
                     MODEL_VERSION_CREATION_SERVICE_LOGGER.debug("classification update is successful========" + response);
-                    response.getMember().forEach((resp) -> {
-                        HashMap<String, String> itemMap = new HashMap();
-                        itemMap.put("name", resp.getName());
-                        itemMap.put("cestamp", resp.getCestamp());
-                        classList.add(itemMap);
-                    });
+                    if (NullOrEmptyChecker.isNullOrEmpty(undefinedError)) {
+                        response.getMember().forEach((resp) -> {
+                            HashMap<String, String> itemMap = new HashMap();
+                            itemMap.put("name", resp.getName());
+                            itemMap.put("cestamp", resp.getCestamp());
+                            classList.add(itemMap);
+                        });
+                    } else {
+                        for (com.bjit.common.code.utility.dsapi.ipclassification.classifiedItem.model.Member resp : response.getMember()) {
+                            HashMap<String, String> itemMap = new HashMap();
+                            itemMap.put("name", resp.getName());
+                            itemMap.put("cestamp", resp.getCestamp());
+                            itemMap.put("error", undefinedError);
+                            classList.add(itemMap);
+                        }
+                    }
                 } else {
                     MODEL_VERSION_CREATION_SERVICE_LOGGER.fatal(response.getMessage());
                     HashMap<String, String> itemMap = new HashMap();
@@ -1298,7 +1330,6 @@ public class MVImportServiceImpl implements MVImportService {
                 attributes1Map.put("customerAttributes", interfaceAttr);
                 Map<String, String> attr = new HashMap();
                 attr.put("MBOM_Mastership", item.get("mastership"));
-                attr.put("MBOM_AUTLifecycleStatus", item.get("status"));
                 attr.put("MBOM_AtonVersion", item.get("version"));
                 attr.put("MBOM_ItemCode", item.get("itemCode"));
                 interfaceAttr.put("MBOM_MBOMATON", attr);
@@ -1572,6 +1603,9 @@ public class MVImportServiceImpl implements MVImportService {
     private String checkStatusForItems(String sourceStatus) {
         String destStatus;
         switch (sourceStatus) {
+            case "Pilot":
+                destStatus = "FROZEN";
+                break;
             case "Active":
             case "Phase-out":
             case "End-of-Life":
@@ -1582,7 +1616,7 @@ public class MVImportServiceImpl implements MVImportService {
                 destStatus = "OBSOLETE";
                 break;
             default:
-                destStatus = "FROZEN";
+                destStatus = "IN_WORK";
                 break;
         }
         return destStatus;

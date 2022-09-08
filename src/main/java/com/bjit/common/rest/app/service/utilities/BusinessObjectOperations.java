@@ -22,12 +22,7 @@ import com.bjit.ewc18x.utils.PropertyReader;
 import com.matrixone.apps.domain.util.FrameworkException;
 import com.matrixone.apps.domain.util.MqlUtil;
 
-import matrix.db.BusinessInterface;
-import matrix.db.BusinessInterfaceList;
-import matrix.db.BusinessObject;
-import matrix.db.Context;
-import matrix.db.JPO;
-import matrix.db.Vault;
+import matrix.db.*;
 import matrix.util.MatrixException;
 
 /**
@@ -552,7 +547,7 @@ public class BusinessObjectOperations {
 
             interfaceFromMapList.removeAll(businessObjectInterfacesList);
             businessObjectInterfacesList.removeAll(copyInterfaceFromMapList);
-            
+
             removeInterface(context, objectId, businessObjectInterfacesList, vault);
 
             BUSINESS_OBJECT_OPERATIONS_LOGGER.debug("Interfaces " + interfaceFromMapList + " to be added");
@@ -1051,15 +1046,55 @@ public class BusinessObjectOperations {
         }
     }
 
+    public HashMap<String, String> getPreviousBOAttributesListOfRevisedItem(Context context, BusinessObject revisedtItem) throws MatrixException {
+        HashMap<String,String> attributeListMap = new HashMap<>();
+        BusinessObject previousItem = revisedtItem.getPreviousRevision(context);
+        AttributeList attributeList = previousItem.getAttributes(context).getAttributes();
+        attributeList.forEach(attribute -> {
+            attributeListMap.put(attribute.getName(),attribute.getValue());
+        });
+        return attributeListMap;
+    }
+
+
+
+    /**
+     * Example : attribute[MBOM_MBOMPDM.MBOM_PDM_Owner_Group] Removed the last
+     * "]" square bracket and removed first "attribute[" from the string number
+     * of chars in "attribute[" is 10
+     *
+     * @param encodedAttributeName
+     * @return
+     */
+    public String getAttributeName(String encodedAttributeName) {
+        try {
+            
+            if(!encodedAttributeName.contains("attribute[")){
+                return encodedAttributeName;
+            }
+            
+            int stringLength = encodedAttributeName.length() - 1;
+            encodedAttributeName = encodedAttributeName.substring(0, stringLength).substring(10, stringLength);
+            return encodedAttributeName;
+        } catch (Exception exp) {
+            return encodedAttributeName;
+        }
+    }
+
     private void populatePackageMapMap() {
         if (DISCIPLINE_MAP == null || DISCIPLINE_MAP.size() < 1) {
             DISCIPLINE_MAP = PropertyReader.getProperties(OBJECT_DISCIPLINE_PATTERN, true);
         }
     }
 
+
+
+
     private void setBusinessObjectUtility(BusinessObjectUtility businessObjectUtility) {
         this.businessObjectUtility = businessObjectUtility;
     }
+
+
 
     public BusinessObjectOperations() {
         businessObjectUtility = new BusinessObjectUtility();

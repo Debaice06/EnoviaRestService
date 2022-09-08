@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 @Component
 @Qualifier("ProjectStructureModelConverter")
@@ -74,12 +76,33 @@ public class ProjectStructureModelConverter implements IModelConverterAdapter<Pr
             comosTaskBean.setActivityStatus("Released");
             comosTaskBean.setErpType(child.getType());
 
+            Optional.ofNullable(child.getProperties()).filter(properties -> !properties.isEmpty()).ifPresent(properties -> {
+                Optional
+                        .ofNullable(properties.get("plannedDeliveryDate"))
+                        .filter(plannedDeliveryDate -> !plannedDeliveryDate.isEmpty())
+                        .ifPresent(plannedDeliveryDate -> setPlannedDeliveryDate.accept(plannedDeliveryDate, comosTaskBean));
+
+                Optional
+                        .ofNullable(properties.get("lastModifiedInTable"))
+                        .filter(lastModifiedInTable -> !lastModifiedInTable.isEmpty())
+                        .ifPresent(lastModifiedInTable -> setLastModifiedDate.accept(lastModifiedInTable, comosTaskBean));
+            });
+
             taskBeanList.add(comosTaskBean);
 
-            Optional.ofNullable(child.getChilds()).ifPresent((nextChildren) -> this.getTaskList(child.getCode(), projectSpaceName, nextChildren, taskBeanList));
+            Optional.ofNullable(child.getChilds())
+                    .ifPresent((nextChildren) -> this.getTaskList(child.getCode(), projectSpaceName, nextChildren, taskBeanList));
 
         });
 
         return taskBeanList;
     }
+
+    BiConsumer<String, ComosTaskBean> setPlannedDeliveryDate = (deliveryDate, taskBean) -> {
+        taskBean.setPlannedDeliveryDate(deliveryDate);
+    };
+
+    BiConsumer<String, ComosTaskBean> setLastModifiedDate = (deliveryDate, taskBean) -> {
+        taskBean.setPlannedDeliveryDate(deliveryDate);
+    };
 }

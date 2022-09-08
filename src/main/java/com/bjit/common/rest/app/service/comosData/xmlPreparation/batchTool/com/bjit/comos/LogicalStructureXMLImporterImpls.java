@@ -40,7 +40,7 @@ public class LogicalStructureXMLImporterImpls implements IBatchToolRunner {
     Environment env;
 
     @Autowired
-    FileProcessor fileProcessor;
+    ComosBatchToolFileProcessor comosBatchToolFileProcessor;
 
 
     @Autowired
@@ -288,8 +288,8 @@ public class LogicalStructureXMLImporterImpls implements IBatchToolRunner {
 
 
     public void moveFiletoOld(String filename) {
-//        fileProcessor.moveToFolder("D:/COMOS new/GeneratedXML/mill-id_119160_eq-id_119160.135_C_3_0001.xml", "old");
-        fileProcessor.moveToFolder(filename, "old");
+//        comosBatchToolFileProcessor.moveToFolder("D:/COMOS new/GeneratedXML/mill-id_119160_eq-id_119160.135_C_3_0001.xml", "old");
+        comosBatchToolFileProcessor.moveToFolder(filename, "old");
 //        String  oldFileDirectory=env.getProperty("generated.logical.structure.xml.file.directory");
 //        Files.move(filename, oldFileDirectory);
 
@@ -297,7 +297,7 @@ public class LogicalStructureXMLImporterImpls implements IBatchToolRunner {
     }
 
     public void moveFiletoError() {
-        fileProcessor.moveToFolder("D:/COMOS new/GeneratedXML/mill-id_119160_eq-id_119160.135_C_3_0001.xml", "old");
+        comosBatchToolFileProcessor.moveToFolder("D:/COMOS new/GeneratedXML/mill-id_119160_eq-id_119160.135_C_3_0001.xml", "old");
 
     }
 }

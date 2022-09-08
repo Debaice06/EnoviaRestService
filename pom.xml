@@ -418,6 +418,25 @@
             <artifactId>okhttp</artifactId>
             <version>3.9.1</version>
         </dependency>
+        <!--https://mvnrepository.com/artifact/javax.xml.bind/jaxb-api--> 
+        <dependency>
+            <groupId>javax.xml.bind</groupId>
+            <artifactId>jaxb-api</artifactId>
+            <version>2.3.1</version>
+        </dependency>
+
+        <!--https://mvnrepository.com/artifact/javax.activation/javax.activation-api--> 
+        <dependency>
+            <groupId>javax.activation</groupId>
+            <artifactId>javax.activation-api</artifactId>
+            <version>1.2.0</version>
+        </dependency>
+        <!--https://mvnrepository.com/artifact/org.glassfish.jaxb/jaxb-runtime--> 
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+            <version>2.3.1</version>
+        </dependency>
         <!--        <dependency>-->
         <!--            <groupId>com.sun.xml.ws</groupId>-->
         <!--            <artifactId>jaxws-ri</artifactId>-->
@@ -433,7 +452,6 @@
             <artifactId>spring-data-rest-hal-browser</artifactId>
         </dependency>
         <dependency>
-            <!--<<<<<<< HEAD-->
             <groupId>org.jboss.resteasy</groupId>
             <artifactId>resteasy-client</artifactId>
             <version>3.0.11.Final</version>
@@ -465,11 +483,9 @@
             <version>9.4</version>
             <type>jar</type>
         </dependency>
-
     </dependencies>
 
     <profiles>
-
         <!-- Custom profiler -->
         <profile>
             <id>dev3</id>
@@ -597,7 +613,6 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
@@ -606,8 +621,6 @@
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
-
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -625,7 +638,6 @@
                     <warName>EnoviaRestService</warName>
                 </configuration>
             </plugin>
-
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
                 <version>3.0.2</version>
@@ -648,7 +660,6 @@
                 <version>3.4.0.905</version>
             </plugin>
         </plugins>
-
         <!-- Added resources for adding data in different application files -->
     </build>
 

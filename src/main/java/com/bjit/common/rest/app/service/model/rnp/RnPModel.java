@@ -273,7 +273,7 @@ public class RnPModel {
     public void setNumberOfChildInTheStructure(Long numberOfChildInTheStructure) {
         this.numberOfChildInTheStructure = numberOfChildInTheStructure;
     }
-
+    
     public File getDownloadableFile() {
         return downloadableFile;
     }

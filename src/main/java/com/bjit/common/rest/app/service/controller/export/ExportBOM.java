@@ -1,33 +1,87 @@
 package com.bjit.common.rest.app.service.controller.export;
 
 import com.bjit.common.code.utility.security.ContextPasswordSecurity;
+import com.bjit.common.rest.app.service.background.himelli.HimelliResponseHandler;
 import com.bjit.common.rest.app.service.background.processors.BackgroundProcessor;
 import com.bjit.common.rest.app.service.background.processors.BackgroundResponse;
 import com.bjit.common.rest.app.service.background.processors.BackgroundRunnable;
-import com.bjit.common.rest.app.service.bomExport.BomExportUtil;
-import com.bjit.common.rest.app.service.context.CreateContext;
-import com.bjit.common.rest.app.service.controller.authentication.AuthenticationUserModel;
 import com.bjit.common.rest.app.service.background.rnp.RnPBackgroundProcessImpl;
 import com.bjit.common.rest.app.service.background.rnp.RnPBackgroundProcessSingleLevelImpl;
 import com.bjit.common.rest.app.service.background.rnp.RnPBomData;
+import com.bjit.common.rest.app.service.background.rnp.RnPResponseHandler;
+import com.bjit.common.rest.app.service.bomExport.BomExportUtil;
+import com.bjit.common.rest.app.service.context.CreateContext;
+import com.bjit.common.rest.app.service.controller.authentication.AuthenticationUserModel;
+import com.bjit.common.rest.app.service.controller.export.himelli.HimelliLogger;
+import com.bjit.common.rest.app.service.controller.export.himelli.HimelliReportProcessor;
+import com.bjit.common.rest.app.service.controller.export.himelli.HimelliReportUtility;
+import com.bjit.common.rest.app.service.controller.export.himelli.HimelliRequestValidator;
+import com.bjit.common.rest.app.service.controller.export.himelli.LogType;
+import com.bjit.common.rest.app.service.controller.export.himelli.MultiLevelBOMStructureUtils;
+import com.bjit.common.rest.app.service.controller.export.report.single_level.model.ReportParameterModel;
+import com.bjit.common.rest.app.service.controller.export.report.single_level.provider.ContextProvider;
+import com.bjit.common.rest.app.service.export.product.ProductExportService;
+import com.bjit.common.rest.app.service.model.himelli.HimelliModel;
+import com.bjit.common.rest.app.service.model.rnp.RnPModel;
+import com.bjit.common.rest.app.service.payload.common_response.CommonResponse;
 import com.bjit.common.rest.app.service.payload.common_response.CustomResponseBuilder;
 import com.bjit.common.rest.app.service.payload.common_response.IResponse;
+import com.bjit.common.rest.app.service.search.SearchService;
+import com.bjit.common.rest.app.service.utilities.DateTimeUtils;
+import com.bjit.common.rest.app.service.utilities.JSON;
 import com.bjit.common.rest.app.service.utilities.NullOrEmptyChecker;
 import com.bjit.common.rest.app.service.utilities.ObjectMapper;
+import com.bjit.common.rest.app.service.utilities.ServiceRequester;
 import com.bjit.common.rest.app.service.utilities.VerifyToken;
+import com.bjit.common.rest.pdm_enovia.bom.comparison.constant.Constant;
+import com.bjit.dw.enovia.action.EnoviaNightlyUpdateAction;
+import com.bjit.common.rest.item_bom_import.xml_mapping_model.ResponseMessageFormaterBean;
+import com.bjit.common.rest.pdm_enovia.bom.comparison.constant.Constant;
 import com.bjit.ewc18x.model.AttributesForm;
+import com.bjit.ewc18x.model.ExpandObjectForm;
 import com.bjit.ewc18x.model.ResponseForReport;
 import com.bjit.ewc18x.model.Status;
+import com.bjit.ewc18x.service.ExpandObjectService;
 import com.bjit.ewc18x.service.ExpandObjectServiceImpl;
 import com.bjit.ewc18x.utils.CustomException;
 import com.bjit.ewc18x.utils.EnoviaWebserviceCommon;
+import com.bjit.ewc18x.utils.MqlQueries;
 import com.bjit.ewc18x.utils.PropertyReader;
 import com.bjit.ewc18x.validator.BOMExportValidation;
+import com.bjit.mapper.mapproject.expand.ObjectTypesAndRelations;
+import com.bjit.mapper.mapproject.jasper_report.JasperReportGenerator;
+import com.bjit.mapper.mapproject.jsonOutput.SelectedAtrributeFetch;
+import com.bjit.ex.integration.transfer.actions.GTSNightlyUpdateTransferAction;
+import com.bjit.ex.integration.transfer.actions.LNTransferAction;
+import com.bjit.mapper.mapproject.expand.ObjectTypesAndRelations;
+import com.bjit.mapper.mapproject.jasper_report.JasperReportGenerator;
+import com.bjit.mapper.mapproject.util.CommonUtil;
+import com.bjit.mapper.mapproject.util.Constants;
 import com.bjit.plmkey.ws.controller.expandobject.ExpandObjectUtil;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import com.google.gson.Gson;
+import com.matrixone.apps.domain.util.FrameworkException;
+import com.matrixone.apps.domain.util.MqlUtil;
+import matrix.db.BusinessObject;
+import matrix.db.Context;
+import matrix.util.MatrixException;
+import org.apache.commons.io.IOUtils;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.xml.sax.SAXException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPathExpressionException;
+import java.io.*;
+import java.net.ConnectException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,93 +92,62 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import matrix.db.Context;
+import matrix.util.MatrixException;
 import org.apache.commons.io.IOUtils;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
-import com.bjit.ewc18x.model.ExpandObjectForm;
-import com.bjit.ewc18x.service.ExpandObjectService;
-import com.bjit.ewc18x.utils.MqlQueries;
-import com.bjit.mapper.mapproject.jasper_report.JasperReportGenerator;
-import com.bjit.mapper.mapproject.util.CommonUtil;
-import com.bjit.mapper.mapproject.util.Constants;
-import com.google.gson.Gson;
-import java.util.HashMap;
-import java.util.Scanner;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.xml.sax.SAXException;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPathExpressionException;
-import matrix.db.BusinessObject;
-import matrix.util.MatrixException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.xml.sax.SAXException;
-import com.bjit.common.rest.app.service.controller.export.himelli.HimelliLogger;
-import com.bjit.common.rest.app.service.controller.export.himelli.HimelliReportUtility;
-import com.bjit.common.rest.app.service.controller.export.himelli.HimelliReportProcessor;
-import com.bjit.common.rest.app.service.controller.export.himelli.LogType;
-import com.bjit.common.rest.app.service.controller.export.himelli.MultiLevelBOMStructureUtils;
-import com.bjit.common.rest.app.service.controller.export.report.single_level.model.ReportBusinessModel;
-import com.bjit.common.rest.app.service.controller.export.report.single_level.model.ReportDataModel;
-import com.bjit.common.rest.app.service.controller.export.report.single_level.model.ReportParameterModel;
-import com.bjit.common.rest.app.service.controller.export.report.single_level.provider.ContextProvider;
-import com.bjit.common.rest.app.service.controller.export.report.single_level.provider.ReportDataProvider;
-import com.bjit.common.rest.app.service.controller.export.report.single_level.validator.ReportParameterValidator;
-import com.bjit.common.rest.app.service.export.product.ProductExportService;
-import com.bjit.common.rest.app.service.search.SearchService;
-import com.bjit.common.rest.pdm_enovia.bom.comparison.constant.Constant;
-import com.bjit.common.rest.app.service.controller.lntransfer.LNTransferService;
-import com.bjit.common.rest.app.service.controller.lntransfer.LNTransferServiceImpl;
-import com.bjit.common.rest.app.service.controller.lntransfer.Util.LNRequestUtil;
-import com.bjit.common.rest.app.service.background.rnp.RnPResponseHandler;
-import com.bjit.common.rest.app.service.controller.export.himelli.HimelliRequestValidator;
-import com.bjit.common.rest.app.service.model.itemTransfer.LNTransferRequestModel;
-import com.bjit.common.rest.app.service.model.rnp.RnPModel;
-import com.bjit.common.rest.app.service.payload.common_response.CommonResponse;
-import com.bjit.common.rest.app.service.utilities.JSON;
-import com.bjit.common.rest.app.service.utilities.ServiceRequester;
-import com.bjit.common.rest.item_bom_import.xml_mapping_model.ResponseMessageFormaterBean;
-import com.bjit.ex.integration.transfer.actions.GTSNightlyUpdateTransferAction;
-import com.bjit.ex.integration.transfer.actions.LNTransferAction;
-import com.bjit.mapper.mapproject.expand.ObjectTypesAndRelations;
-import com.matrixone.apps.domain.util.FrameworkException;
-import com.matrixone.apps.domain.util.MqlUtil;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import com.bjit.common.rest.app.service.utilities.DateTimeUtils;
-import com.bjit.common.rest.item_bom_import.xml_mapping_model.ResponseMessageFormaterBean;
-import com.bjit.dw.enovia.action.EnoviaNightlyUpdateAction;
-import com.bjit.ex.integration.transfer.actions.GTSNightlyUpdateTransferAction;
-import com.bjit.ex.integration.transfer.actions.LNTransferAction;
-import com.bjit.mapper.mapproject.jsonOutput.SelectedAtrributeFetch;
-import java.net.ConnectException;
-import java.text.MessageFormat;
-import java.time.Instant;
-import java.util.Date;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpEntity;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
 import java.util.StringJoiner;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @RestController
 @RequestMapping(path = "/export")
@@ -133,17 +156,41 @@ public class ExportBOM {
     @Lazy
     @Autowired
     RnPResponseHandler rnpResponseHandler;
+    @Lazy
+    @Autowired
+    HimelliResponseHandler himelliResponseHandler;
 
     String token;
     AuthenticationUserModel userCredentialsModel;
     private static HashMap<String, String> DIRECTORY_MAP;
-    private static final org.apache.log4j.Logger EXPORT_BOM_LOGGER = org.apache.log4j.Logger.getLogger(ExportBOM.class);
+    private static final org.apache.log4j.Logger LOGGER = org.apache.log4j.Logger.getLogger(ExportBOM.class);
     private final static String BOM_EXPORT_CONFIG_FILE_NAME = "attributeConf";
+    private static final String TEXT_PLAIN = "text/plain";
+    private static final String REPORT_RECEIVER_MAIL_ADDRESS = " is a large structure. Need report receiver mail address";
+    private static final String COULD_NOT_GENERATE_HIMELLI_FORMAT_DATA = "; Could not generate himelli format data.";
+    private static final String APPLICATION_JSON = "application/json";
+    private static final String RESPONSE_BODY = "response body: ";
+    private static final String VALCON_RESPONSE_OBJECT = "valcon response object: ";
+    private static final String SYSTEM_ERRORS = "systemErrors";
+    private static final String DRAWING_NUMBER = "Drawing Number";
+    private static final String DWG = "Dwg";
+    private static final String MOD_TREE_VIEW = "mod treeView: ";
+    private static final String ATTACHMENT_FILENAME = "attachment; filename=";
+    private static final String STATUS = "status";
+    private static final String OK = "OK";
+
     @Autowired
     private ProductExportService productExportService;
     String json = "";
     @Autowired
     private SearchService searchService;
+    @Autowired
+    HimelliReportUtility himelliReportUtility;
+
+    @Value("${himelli.mail.background.process.response.message}")
+    private String reportMessage;
+    @Value("${himelli.background.process.message.queue.url}")
+    private String himelliMQUrl;
 
     @ResponseBody
     @RequestMapping(value = "/{serviceName}", method = RequestMethod.GET, produces = "application/json;charset=UTF-8")
@@ -169,12 +216,12 @@ public class ExportBOM {
             ExpandObjectUtil.addGraphicsSupport(); // necessary for report generation in different environment
             requestId = bomExportValidation.generateRequestId(requestId);
             userCredentials = bomExportValidation.getUserCredentials(httpRequest);
-            EXPORT_BOM_LOGGER.info("Validating credentials and services and also generates service file");
+            LOGGER.info("Validating credentials and services and also generates service file");
             serviceFile = validateServiceRequestAndGetFile(httpRequest, serviceName, attributes);
             type = bomExportValidation.getType(type);
             reportName = bomExportValidation.getReportName(reportName);
             EnoviaWebserviceCommon enoviaWebserviceCommon = new EnoviaWebserviceCommon();
-            EXPORT_BOM_LOGGER.info("Generating context");
+            LOGGER.info("Generating context");
             user = userCredentials.get("user");
             pass = userCredentials.get("pass");
             context = enoviaWebserviceCommon.getSecureContext(user, pass);
@@ -223,12 +270,12 @@ public class ExportBOM {
             ExpandObjectUtil.addGraphicsSupport(); // necessary for report generation in different environment
             requestId = bomExportValidation.generateRequestId(requestId);
             userCredentials = bomExportValidation.getUserCredentials(user, pass);
-            EXPORT_BOM_LOGGER.info("Validating credentials and services and also generates service file");
+            LOGGER.info("Validating credentials and services and also generates service file");
             serviceFile = validateServiceRequestAndGetFile(httpRequest, serviceName, attributes);
             type = bomExportValidation.getType(type);
             reportName = bomExportValidation.getReportName(reportName);
             EnoviaWebserviceCommon enoviaWebserviceCommon = new EnoviaWebserviceCommon();
-            EXPORT_BOM_LOGGER.info("Generating context");
+            LOGGER.info("Generating context");
             context = enoviaWebserviceCommon.getSecureContext(user, pass);
             outputData = getDataFromExpandObjectService(context, user, pass, serviceFile, requestId, attributes, serviceName, type, name, rev, reportName, format, includeFiles);
             String buildResponse = responseBuilder.setData(outputData).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.OK).buildResponse();
@@ -242,34 +289,34 @@ public class ExportBOM {
     private File validateServiceRequestAndGetFile(HttpServletRequest httpRequest, String serviceName, String attributes) throws Exception {
         try {
             BOMExportValidation bomExportValidation = new BOMExportValidation();
-            EXPORT_BOM_LOGGER.info("Validating request");
+            LOGGER.info("Validating request");
             Boolean isRequestValid = bomExportValidation.validateBOMExportServiceRequest(httpRequest, serviceName, attributes);
             if (!isRequestValid) {
-                EXPORT_BOM_LOGGER.info("Request is invalid");
+                LOGGER.info("Request is invalid");
                 throw new Exception(Constants.ATTRIBUTION_EXCEPTION);
             }
-            EXPORT_BOM_LOGGER.info("Getting service file");
-            EXPORT_BOM_LOGGER.debug("Service name : " + serviceName);
+            LOGGER.info("Getting service file");
+            LOGGER.debug("Service name : " + serviceName);
             return bomExportValidation.getServiceFile(serviceName);
         } catch (Exception exp) {
-            EXPORT_BOM_LOGGER.error(exp.getMessage());
+            LOGGER.error(exp.getMessage());
             throw exp;
         }
     }
 
     private ExpandObjectForm setDataIntoExpandForm(Context context, String user, String pass, File file, String requestId, String attributes, String serviceName, String type, String name, String rev) throws CustomException, Exception {
-        EXPORT_BOM_LOGGER.info("Setting data into 'ExpandObjectForm'");
+        LOGGER.info("Setting data into 'ExpandObjectForm'");
         ExpandObjectForm expandObjectForm = new ExpandObjectForm();
         expandObjectForm.setUserID(user);
         expandObjectForm.setPassword(pass);
         expandObjectForm.setDefaultTypeList(ExpandObjectUtil.getExpandObjectTypeList(file));
         expandObjectForm.setSelectedTypeList(ExpandObjectUtil.getExpandObjectTypeList(file));
         try {
-            EXPORT_BOM_LOGGER.info("Getting revision");
+            LOGGER.info("Getting revision");
             rev = ExpandObjectUtil.getRev(context, requestId, type, name, rev);
-            EXPORT_BOM_LOGGER.debug("Revision : " + rev);
+            LOGGER.debug("Revision : " + rev);
         } catch (Exception exp) {
-            EXPORT_BOM_LOGGER.error(exp.getMessage());
+            LOGGER.error(exp.getMessage());
             throw exp;
         }
         expandObjectForm.setName(name);
@@ -283,7 +330,7 @@ public class ExportBOM {
         try {
             expandObjectForm.setSelectedItem((ArrayList<String>) ExpandObjectUtil.getAttributeList(attributes));
         } catch (Exception exp) {
-            EXPORT_BOM_LOGGER.error(exp.getMessage());
+            LOGGER.error(exp.getMessage());
             throw exp;
         }
 
@@ -294,53 +341,53 @@ public class ExportBOM {
      * this method using Web Service for object expansion
      *
      * @param
-     * @throws
      * @return
+     * @throws
      */
     private String getDataFromExpandObjectService(Context context, String user, String pass, File serviceFile, String requestId, String attrs, String serviceName, String type, String name, String rev, String reportName, String format, boolean includeFiles) throws CustomException, Exception {
         ExpandObjectService expandObjectService = new ExpandObjectServiceImpl();
         AttributesForm attributeForm = new AttributesForm();
         // expand object using the matrix API finish 
         ExpandObjectForm expandObjectForm = setDataIntoExpandForm(context, user, pass, serviceFile, requestId, attrs, serviceName, type, name, rev);
-        EXPORT_BOM_LOGGER.debug("Reading data from 'Bom Export Config File'. File name is : " + BOM_EXPORT_CONFIG_FILE_NAME);
+        LOGGER.debug("Reading data from 'Bom Export Config File'. File name is : " + BOM_EXPORT_CONFIG_FILE_NAME);
         attributeForm.readValues(ExpandObjectUtil.getConfigFileNameFromService(serviceFile, BOM_EXPORT_CONFIG_FILE_NAME));
         Map<String, String> allItemMap = attributeForm.getAttributeNameMap();
-        EXPORT_BOM_LOGGER.debug("All item map : " + allItemMap);
+        LOGGER.debug("All item map : " + allItemMap);
         List<String> allRelAttributeList = (ArrayList<String>) attributeForm.getRelationshipAttrName();
-        EXPORT_BOM_LOGGER.debug("All relation attribute List : " + allRelAttributeList);
+        LOGGER.debug("All relation attribute List : " + allRelAttributeList);
         List<String> propertyList = (ArrayList<String>) attributeForm.getPropertyNames();
-        EXPORT_BOM_LOGGER.debug("Property List : " + propertyList);
+        LOGGER.debug("Property List : " + propertyList);
         List<String> notPropertyNotAttributeList = (ArrayList<String>) attributeForm.getNotPropertyNotAttributeNames();
-        EXPORT_BOM_LOGGER.debug("Not property not attribute list : " + notPropertyNotAttributeList);
+        LOGGER.debug("Not property not attribute list : " + notPropertyNotAttributeList);
         List<String> selectedAttrList = expandObjectForm.getSelectedItem();
-        EXPORT_BOM_LOGGER.debug("Selected attribute list : " + selectedAttrList);
-        EXPORT_BOM_LOGGER.info("Getting final selected attribute list");
+        LOGGER.debug("Selected attribute list : " + selectedAttrList);
+        LOGGER.info("Getting final selected attribute list");
         ExpandObjectUtil.getFinalSelectedAttributeList(selectedAttrList, propertyList, notPropertyNotAttributeList, allRelAttributeList, allItemMap);
         ExpandObjectUtil.finalSelectedObjParamList.addAll(ExpandObjectUtil.finalSelectedAttributeList);
         try {
-            EXPORT_BOM_LOGGER.info("Populating 'ExpandObjectForm' from service");
-            EXPORT_BOM_LOGGER.debug("Service name : " + serviceName);
+            LOGGER.info("Populating 'ExpandObjectForm' from service");
+            LOGGER.debug("Service name : " + serviceName);
             expandObjectForm = expandObjectService.populateServiceInfo(expandObjectForm, "services/" + serviceName);
         } catch (CustomException exp) {
-            EXPORT_BOM_LOGGER.error(exp.getMessage());
+            LOGGER.error(exp.getMessage());
             throw exp;
         }
 
         String physicalId;
         try {
             physicalId = ExpandObjectUtil.getPhycialId(context, expandObjectForm);
-            EXPORT_BOM_LOGGER.debug("Physicial Id is : " + physicalId);
+            LOGGER.debug("Physicial Id is : " + physicalId);
         } catch (CustomException exp) {
-            EXPORT_BOM_LOGGER.error(exp.getMessage());
+            LOGGER.error(exp.getMessage());
             throw exp;
         }
 
         String outputData;
         try {
             outputData = expandObjectService.getJsonOutput(null, context, physicalId, ExpandObjectUtil.finalSelectedObjParamList, ExpandObjectUtil.finalSelectedAttributeList, ExpandObjectUtil.finalSelectedRelAttributeList, expandObjectForm);
-            EXPORT_BOM_LOGGER.debug("Output data : " + outputData);
+            LOGGER.debug("Output data : " + outputData);
         } catch (CustomException exp) {
-            EXPORT_BOM_LOGGER.error(exp.getMessage());
+            LOGGER.error(exp.getMessage());
             throw exp;
         }
 
@@ -349,13 +396,13 @@ public class ExportBOM {
             outputData = outputData.replace(jsonEntry.getValue(), jsonEntry.getKey());
         }
 
-        EXPORT_BOM_LOGGER.debug("Output Data is " + outputData);
+        LOGGER.debug("Output Data is " + outputData);
 
         if (format != null && !outputData.isEmpty()) {
             String reportString = ExpandObjectUtil.generateReport(outputData, name, reportName, requestId, format);
-            EXPORT_BOM_LOGGER.debug("Report is : " + reportString);
+            LOGGER.debug("Report is : " + reportString);
             if (!reportString.isEmpty()) {
-                EXPORT_BOM_LOGGER.info("Valid report");
+                LOGGER.info("Valid report");
                 ResponseForReport responseReport = new ResponseForReport(name, Status.OK, requestId, reportString);
                 String reportResponseJSON = new Gson().toJson(responseReport);
                 return reportResponseJSON;
@@ -371,7 +418,7 @@ public class ExportBOM {
             @RequestParam(value = "requestId", required = true) String requestId,
             @RequestParam(value = "format", required = true) String format,
             HttpServletResponse response) {
-        try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get(PropertyReader.getProperty("ebom.reports.folder.path")))) {
+        try ( DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get(PropertyReader.getProperty("ebom.reports.folder.path")))) {
             for (Path path : directoryStream) {
                 if (path.toString().contains(requestId) && path.toString().endsWith(format)) {
                     String applicationType;
@@ -396,124 +443,99 @@ public class ExportBOM {
         return null;
     }
 
-    /**
+     /**
      * @param httpRequest
-     * @param response
-     * @param type
-     * @param name
-     * @param rev
-     * @param latest
-     * @param objectId
-     * @param format
-     * @param lang
-     * @param primaryLang
-     * @param secondaryLang
-     * @param requestId
-     * @param expandLevel
-     * @param requester
-     * @param attributeString
-     * @param download
+     * @param httpResponse
+     * @param himelliModel
      * @return
      */
     @ResponseBody
-    @RequestMapping(value = "/himelli/bom", method = RequestMethod.GET, produces = {MediaType.TEXT_PLAIN_VALUE, MediaType.APPLICATION_JSON_VALUE})
-    public HttpEntity<ByteArrayResource> himelliBOMExport(HttpServletRequest httpRequest, HttpServletResponse response,
-            @RequestParam(value = "type", required = false) String type,
-            @RequestParam(value = "name", required = false) String name, // code level validation for this parameter
-            @RequestParam(value = "rev", required = false) String rev,
-            @RequestParam(value = "isLatest", required = false, defaultValue = "false") boolean latest,
-            @RequestParam(value = "objectId", required = false) String objectId,
-            @RequestParam(value = "format", required = false, defaultValue = "json") String format,
-            @RequestParam(value = "lang", required = false, defaultValue = "En") String lang,
-            @RequestParam(value = "primaryLang", required = false) String primaryLang,
-            @RequestParam(value = "secondaryLang", required = false) String secondaryLang,
-            @RequestParam(value = "requestId", required = false) String requestId,
-            @RequestParam(value = "expandLevel", required = false) String expandLevel,
-            @RequestParam(value = "requester", required = false) String requester,
-            @RequestParam(value = "printDrawing", required = false) String isDrawingInfoRequired,
-            @RequestParam(value = "attrs", required = false) String attributeString,
-            @RequestParam(value = "download", required = false, defaultValue = "true") boolean download,
-            @RequestParam(value = "mainProjTitle", required = false) String mainProjTitle,
-            @RequestParam(value = "psk", required = false) String psk,
-            @RequestParam(value = "subTitle", required = false) String subTitle,
-            @RequestParam(value = "product", required = false) String product,
-            @RequestParam(value = "printDelivery", required = false) String printDelivery,
-            @RequestParam(value = "treeView", required = false) String treeView,
-            @RequestParam(value = "drawingNumber", required = false) String drawingNumber,
-            @RequestParam(value = "drawingType", required = false) String docType
-    ) {
+    @GetMapping(value = "/himelli/bom", produces = {MediaType.TEXT_PLAIN_VALUE, MediaType.APPLICATION_JSON_VALUE})
+    public HttpEntity<ByteArrayResource> himelliBOMExport(HttpServletRequest httpRequest, HttpServletResponse httpResponse, HimelliModel himelliModel) {
         IResponse responseBuilder = new CustomResponseBuilder();
-        String buildResponse = "";
+        String buildResponse;
         String errorMessage = "";
-        String himelliReportName = new HimelliReportUtility().generateHimelliReportName(name, rev);
+        Context context = null;
 
-        //as Unique key is mandatory attribute , adding it manually 
-        attributeString = attributeString + ",Unique Key";
+        //as Unique key is mandatory attribute , adding it manually
+        himelliModel.setAttrs(himelliModel.getAttrs() + ",Unique Key");
+
+        //Set backgroundProcess false as default, true for large structure
+        boolean isBackgroundProcess = false;
+
+        //Set Context
+        context = getContext();
+        himelliModel.setContext(context);
+
+        //Set some field's default value
+        himelliModel.setFormat("json");
+        himelliModel.setLang("En");
+        himelliModel.setTreeView("true");
+        himelliModel.setDownload(!himelliModel.isDownload() || himelliModel.isDownload());
+        himelliModel.setLatest(himelliModel.isLatest() && himelliModel.isLatest());
+
         try {
-            //validating Himelli request params....
+            //Validating Himelli request params....
             HimelliRequestValidator requestValidator = new HimelliRequestValidator();
             boolean isValidRequest;
 
-            isValidRequest = requestValidator.validateHimelliServiceRequest(httpRequest, attributeString);
+            isValidRequest = requestValidator.validateHimelliServiceRequest(httpRequest, himelliModel.getAttrs());
 
             if (!isValidRequest) {
                 buildResponse = responseBuilder.setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).addErrorMessage(Constants.ATTRIBUTION_EXCEPTION).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
-                EXPORT_BOM_LOGGER.error(buildResponse);
+                LOGGER.error(buildResponse);
                 return new HttpEntity<>(new ByteArrayResource(buildResponse.getBytes()));
             }
         } catch (Exception ex) {
             Logger.getLogger(ExportBOM.class.getName()).log(Level.SEVERE, null, ex);
         }
+
+        //Check report need to send background process or not
         try {
-            /*
-             * String user = httpRequest.getHeader("user"); String pass =
-             * httpRequest.getHeader("pass"); httpRequest.setAttribute("user",
-             * Base64.getDecoder().decode(user)); httpRequest.setAttribute("pass",
-             * Base64.getDecoder().decode(pass));
-             */
-            treeView = "true";
-            ResponseEntity<?> valconBomJson = (ResponseEntity<?>) generateBomReport(httpRequest, response, type, name, rev,
-                    latest, objectId, "json", lang, primaryLang, secondaryLang, requestId, expandLevel, requester, isDrawingInfoRequired,
-                    attributeString, download, mainProjTitle, psk, subTitle, product, printDelivery, treeView, docType);
-            JSONParser parser = new JSONParser();
-            JSONObject json = (JSONObject) parser.parse(valconBomJson.getBody().toString());
-
-            Object objStatus = json.get("status");
-            String status = objStatus.toString();
-
-            if (!(status.equals("OK"))) {
-                Object Message = json.get("systemErrors");
-                errorMessage = Message.toString();
-                errorMessage = errorMessage.replaceAll("[\\\"]", " ");
-            }
-
-            HimelliLogger.getInstance().printLog("response body: " + valconBomJson.getBody(), LogType.INFO);
-            HimelliLogger.getInstance().printLog("valcon response object: " + valconBomJson.toString(), LogType.INFO);
-
-            MultiLevelBOMStructureUtils multiLevelBOMStructureUtilsObj = new MultiLevelBOMStructureUtils(json, true);
-            json = multiLevelBOMStructureUtilsObj.modifyDataForHimeliExport();
-            HimelliLogger.getInstance().printLog("mod treeView: " + json, LogType.INFO);
-            HimelliReportProcessor himelliReportProcessing = new HimelliReportProcessor(json);
-            // drawing number is not included in request parameter or is set to false, not include in himelli export
-            if (NullOrEmptyChecker.isNullOrEmpty(drawingNumber) || !Boolean.parseBoolean(drawingNumber)) {
-                himelliReportProcessing.addToNotIncludedAttributes("Dwg", "Drawing Number");
-            }
-            byte[] himelliReport = himelliReportProcessing.himelliDataProcessing();
-            HttpHeaders header = new HttpHeaders();
-            header.set(HttpHeaders.CONTENT_TYPE, "text/plain");
-            header.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + himelliReportName);
-            return new HttpEntity<>(new ByteArrayResource(himelliReport), header);
-        } catch (Exception e) {
-            HttpHeaders header = new HttpHeaders();
-            header.set(HttpHeaders.CONTENT_TYPE, "application/json");
-            if (NullOrEmptyChecker.isNullOrEmpty(errorMessage)) {
-                errorMessage = Constants.CONTEXT_EXCEPTION;
-            }
-            EXPORT_BOM_LOGGER.error(errorMessage);
-            buildResponse = responseBuilder.addErrorMessage(errorMessage + "; Could not generate himelli format data.")
-                    .setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
-            return new HttpEntity<>(new ByteArrayResource(buildResponse.getBytes()), header);
+            isBackgroundProcess = himelliReportUtility.isBackgroundProcess(himelliModel);
+        } catch (FrameworkException e) {
+            LOGGER.error(e);
         }
+
+        // Checking if background process is true then need email address
+        if (isBackgroundProcess && NullOrEmptyChecker.isNullOrEmpty(himelliModel.getReceiverEmail())) {
+            throw new NullPointerException(himelliModel.getType() + " " + himelliModel.getName() + " " + himelliModel.getRev() + REPORT_RECEIVER_MAIL_ADDRESS);
+        }
+
+        //If background process is true then send to MQ else generate report
+        if (isBackgroundProcess) {
+            try {
+                setInBackground(himelliModel);
+            } catch (Exception e) {
+                LOGGER.error(e);
+            }
+            //Build a response for background process
+            HttpHeaders header = new HttpHeaders();
+            header.set(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON);
+            buildResponse = responseBuilder.setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.OK).setData(reportMessage).buildResponse();
+            if (context != null) {
+                context.close();
+            }
+            return new HttpEntity<>(new ByteArrayResource(buildResponse.getBytes()), header);
+        } else {
+            //Text report as a response
+            if (context != null) {
+                context.close();
+            }
+            return getHimelliReport(httpRequest, httpResponse, himelliModel, responseBuilder, errorMessage, isBackgroundProcess);
+        }
+
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/himelli/bom/backgroundProcess")
+    public ResponseEntity<?> backgroundProcessorServiceForHimelli(HttpServletRequest httpRequest, HttpServletResponse httpResponse, @RequestBody HimelliModel himelliModel) {
+        IResponse responseBuilder = new CustomResponseBuilder();
+        String errorMessage = "";
+        LOGGER.info("---------- Start generating bom report from background ----------");
+        getHimelliReport(httpRequest, httpResponse, himelliModel, responseBuilder, errorMessage, true);
+        LOGGER.info("---------- End generating bom report from background ----------");
+        return himelliResponseHandler.getBackgroundProcessResponse();
     }
 
     @ResponseBody
@@ -555,14 +577,14 @@ public class ExportBOM {
             JasperReportGenerator jasperReportGenerator = new JasperReportGenerator();
             try {
                 HashMap rootItemParams = CommonUtil.getInfoMapFromBomDataResponse(data, "rootItemInfo");
-                EXPORT_BOM_LOGGER.debug("Response of Root param: " + rootItemParams);
+                LOGGER.debug("Response of Root param: " + rootItemParams);
                 Map<String, String> responseData = jasperReportGenerator.generateReport(jsonString, rootItemParams, null, format, lang, "", type);
                 String outputFile = responseData.get("filePath");
                 if (!outputFile.isEmpty()) {
-                    EXPORT_BOM_LOGGER.debug("Output File: " + outputFile);
-                    EXPORT_BOM_LOGGER.debug("Successfully done.");
+                    LOGGER.debug("Output File: " + outputFile);
+                    LOGGER.debug("Successfully done.");
                     String downloadLink = CommonUtil.generateReportDownloadLinks(httpRequest, responseData.get("fileId"), format);
-                    EXPORT_BOM_LOGGER.debug("Report Download Link: " + downloadLink);
+                    LOGGER.debug("Report Download Link: " + downloadLink);
                     if (download) {
                         Path path = Paths.get(outputFile);
                         String applicationType;
@@ -578,10 +600,10 @@ public class ExportBOM {
                         return IOUtils.toByteArray(inputStream);
                     }
                 } else {
-                    EXPORT_BOM_LOGGER.debug("Failed to generate report file.");
+                    LOGGER.debug("Failed to generate report file.");
                 }
             } catch (Exception exp) {
-                EXPORT_BOM_LOGGER.error(exp.getMessage());
+                LOGGER.error(exp.getMessage());
             } finally {
                 jasperReportGenerator = null;
             }
@@ -594,8 +616,18 @@ public class ExportBOM {
         try {
             return rnpResponseHandler.getDownloadableReport(reportName, response);
         } catch (Exception exp) {
-            EXPORT_BOM_LOGGER.error(exp);
+            LOGGER.error(exp);
             return rnpResponseHandler.getErrorResponse(exp);
+        }
+    }
+
+    @GetMapping("/himelliReport/download/{reportName}")
+    public Object downloadHimelliReport(HttpServletResponse response, @PathVariable String reportName) {
+        try {
+            return himelliResponseHandler.getDownloadableHimelliReport(reportName, response);
+        } catch (Exception exp) {
+            LOGGER.error(exp);
+            return himelliResponseHandler.getErrorResponse(exp);
         }
     }
 
@@ -625,7 +657,7 @@ public class ExportBOM {
             @RequestParam(value = "docType", required = false) String docType,
             @RequestParam(value = "receiverEmail", required = false) String receiverEmail
     ) throws IOException {
-        EXPORT_BOM_LOGGER.info("Url parameters(For Report): Type: " + type + " ,Name: " + name
+        LOGGER.info("Url parameters(For Report): Type: " + type + " ,Name: " + name
                 + " ,Format: " + format + " ,Lang: " + lang + " ,Download: " + download + " ,RequestId: " + requestId + ", Expand Level: " + expandLevel);
         if (format == null) {
             format = Constants.PDF;
@@ -710,7 +742,7 @@ public class ExportBOM {
             return responseHandler.getResponse(isBackgroundProcess, rnpModel);
 
         } catch (Exception exp) {
-            EXPORT_BOM_LOGGER.error("Report generation error: " + exp.getMessage());
+            LOGGER.error("Report generation error: " + exp.getMessage());
             return responseHandler.getErrorResponse(exp);
         } finally {
             if (context != null) {
@@ -799,7 +831,7 @@ public class ExportBOM {
             return responseHandler.getBackgroundProcessResponse();
 
         } catch (Exception exp) {
-            EXPORT_BOM_LOGGER.error("Report generation error: " + exp.getMessage());
+            LOGGER.error("Report generation error: " + exp.getMessage());
             return responseHandler.getErrorResponse(exp);
         } finally {
             if (context != null) {
@@ -819,7 +851,7 @@ public class ExportBOM {
                 throw new Exception(Constants.CONTEXT_EXCEPTION);
             }
         } catch (Exception exp) {
-            EXPORT_BOM_LOGGER.error("Report generation error: " + exp.getMessage());
+            LOGGER.error("Report generation error: " + exp.getMessage());
             throw new RuntimeException(exp);
         }
         return context;
@@ -848,7 +880,7 @@ public class ExportBOM {
             prepareResponseFromMQResponse(callService, backgroundResponse);
 
         } catch (Exception exp) {
-            EXPORT_BOM_LOGGER.error(exp);
+            LOGGER.error(exp);
             throw exp;
         }
         return backgroundResponse;
@@ -874,12 +906,12 @@ public class ExportBOM {
     private Boolean isBackgroundProcess(RnPModel rnpModel) throws FrameworkException, NumberFormatException {
         try {
             Long numberOfChildren = getStructureCount(rnpModel);
-            EXPORT_BOM_LOGGER.info("RnP number of child in structure : " + numberOfChildren);
+            LOGGER.info("RnP number of child in structure : " + numberOfChildren);
             rnpModel.setNumberOfChildInTheStructure(numberOfChildren);
             Boolean isBackgroundProcess = numberOfChildren > Long.parseLong(PropertyReader.getProperty("rnp.background.process.large.structure.max.items.count"));
             return isBackgroundProcess;
         } catch (Exception exp) {
-            EXPORT_BOM_LOGGER.error(exp.getMessage());
+            LOGGER.error(exp.getMessage());
             throw exp;
         }
     }
@@ -907,11 +939,11 @@ public class ExportBOM {
                 rnpCountQuery = "eval expression 'count TRUE' on expand bus '" + rnpModel.getType() + "' '" + rnpModel.getName() + "' '" + rnpModel.getRev() + "' from rel '" + relJoiner.toString() + "' type '" + typeJoiner.toString() + "' recurse to all";
             }
 
-            EXPORT_BOM_LOGGER.info("RnP number of child in structure count query : " + rnpCountQuery);
+            LOGGER.info("RnP number of child in structure count query : " + rnpCountQuery);
             Long numberOfChildren = Long.parseLong(MqlUtil.mqlCommand(rnpModel.getContext(), rnpCountQuery));
             return numberOfChildren;
         } catch (FrameworkException exp) {
-            EXPORT_BOM_LOGGER.error(exp.getMessage());
+            LOGGER.error(exp.getMessage());
             throw exp;
         }
     }
@@ -948,7 +980,7 @@ public class ExportBOM {
             String lowarCase = part[0].toLowerCase();
             name = lowarCase + "-" + part[1];
         }
-        EXPORT_BOM_LOGGER.info("Url parameters(For Report): Type: " + type + " ,Name: " + name
+        LOGGER.info("Url parameters(For Report): Type: " + type + " ,Name: " + name
                 + " ,Format: " + format + " ,Lang: " + lang + " ,Download: " + download + " ,RequestId: " + requestId + ", Expand Level: " + expandLevel);
 
         ResponseEntity responseEntity;
@@ -984,7 +1016,7 @@ public class ExportBOM {
             objectId = mqlQuery.getObjectId(context, type, name, rev);
             if (NullOrEmptyChecker.isNullOrEmpty(objectId)) {
                 buildResponse = responseBuilder.setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).addErrorMessage(Constants.TYPE_NAME_REVISION_BE_NULL_EXCEPTION).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
-                EXPORT_BOM_LOGGER.error(buildResponse);
+                LOGGER.error(buildResponse);
                 return new ResponseEntity<>(buildResponse, HttpStatus.NOT_ACCEPTABLE);
             }
 
@@ -994,7 +1026,7 @@ public class ExportBOM {
             }
             if (NullOrEmptyChecker.isNullOrEmpty(rev)) {
                 buildResponse = responseBuilder.setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).addErrorMessage(Constants.LATEST_REVISION_BE_NULL_EXCEPTION).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
-                EXPORT_BOM_LOGGER.error(buildResponse);
+                LOGGER.error(buildResponse);
                 return new ResponseEntity<>(buildResponse, HttpStatus.NOT_ACCEPTABLE);
             }
             if (format.equals(Constants.PDF) || format.equals(Constants.XLS)) {
@@ -1014,7 +1046,7 @@ public class ExportBOM {
                     MultiLevelBOMStructureUtils treeStructureUtils = new MultiLevelBOMStructureUtils(responseBomData);
                     responseBomData = treeStructureUtils.getTreeStructuredJson().toString();
                 }
-                EXPORT_BOM_LOGGER.debug("Response BOM Data: " + responseBomData);
+                LOGGER.debug("Response BOM Data: " + responseBomData);
                 if (format.equalsIgnoreCase(Constants.JSON)) {
                     response.setHeader("Content-Type", "application/json; charset=UTF-8");
                     httpRequest.setAttribute("Content-Type", "application/json; charset=UTF-8");
@@ -1024,7 +1056,7 @@ public class ExportBOM {
             }
             if (!responseBomData.isEmpty()) {
                 HashMap rootItemParams = CommonUtil.getInfoMapFromBomDataResponse(responseBomData, "rootItemInfo");
-                EXPORT_BOM_LOGGER.debug("Response of Root param: " + rootItemParams);
+                LOGGER.debug("Response of Root param: " + rootItemParams);
                 HashMap deliveryParams = null;
                 if (!NullOrEmptyChecker.isNullOrEmpty(printDelivery) && Boolean.parseBoolean(printDelivery)) {
                     deliveryParams = CommonUtil.getInfoMapFromBomDataResponse(responseBomData, "Delivery Project Info");
@@ -1038,18 +1070,18 @@ public class ExportBOM {
                             return generateBOMReport(outputFile, response);
                         }
                     } else {
-                        EXPORT_BOM_LOGGER.debug("Failed to generate report file.");
+                        LOGGER.debug("Failed to generate report file.");
                     }
                 } catch (Exception exp) {
-                    EXPORT_BOM_LOGGER.debug(exp.getMessage());
+                    LOGGER.debug(exp.getMessage());
                 } finally {
                     jasperReportGenerator = null;
                 }
             } else {
-                EXPORT_BOM_LOGGER.info("Response data is empty.");
+                LOGGER.info("Response data is empty.");
             }
         } catch (Exception e) {
-            EXPORT_BOM_LOGGER.debug(e.getMessage());
+            LOGGER.debug(e.getMessage());
             return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_ACCEPTABLE);
         } finally {
             if (context != null) {
@@ -1078,7 +1110,7 @@ public class ExportBOM {
             return responseHandler.getBackgroundProcessResponse();
 
         } catch (Exception exp) {
-            EXPORT_BOM_LOGGER.error("Report generation error: " + exp.getMessage());
+            LOGGER.error("Report generation error: " + exp.getMessage());
             return responseHandler.getErrorResponse(exp);
         }
     }
@@ -1110,8 +1142,8 @@ public class ExportBOM {
 
         Date controllerStartTime = DateTimeUtils.getTime(new Date());
         Instant singleLevelReportStartTime = Instant.now();
-        EXPORT_BOM_LOGGER.debug("---------------------- ||| SINGLE LEVEL REPORT CONTROLLER BEGIN ||| ----------------------");
-        EXPORT_BOM_LOGGER.debug("##########################################################################################");
+        LOGGER.debug("---------------------- ||| SINGLE LEVEL REPORT CONTROLLER BEGIN ||| ----------------------");
+        LOGGER.debug("##########################################################################################");
 
         IResponse responseBuilder = new CustomResponseBuilder();
         String buildResponse;
@@ -1173,18 +1205,18 @@ public class ExportBOM {
 
         } catch (Exception e) {
             buildResponse = responseBuilder.addErrorMessage(e.getMessage()).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
-            EXPORT_BOM_LOGGER.error(buildResponse);
+            LOGGER.error(buildResponse);
             return new ResponseEntity<>(buildResponse, HttpStatus.NOT_ACCEPTABLE);
         } finally {
             Date controllerEndTime = DateTimeUtils.getTime(new Date());
-            EXPORT_BOM_LOGGER.debug("Time elapsed for 'singleLevelBomDataReport' service is : " + DateTimeUtils.elapsedTime(controllerStartTime, controllerEndTime, null, null));
+            LOGGER.debug("Time elapsed for 'singleLevelBomDataReport' service is : " + DateTimeUtils.elapsedTime(controllerStartTime, controllerEndTime, null, null));
 
             Instant singleLevelReportEndTime = Instant.now();
             long duration = DateTimeUtils.getDuration(singleLevelReportStartTime, singleLevelReportEndTime);
 
-            EXPORT_BOM_LOGGER.debug("Single Level Report Generation Process has taken : '" + duration + "' milli-seconds");
-            EXPORT_BOM_LOGGER.debug("---------------------------------------- ||| SINGLE LEVEL REPORT CONTROLLER END ||| ----------------------------------------");
-            EXPORT_BOM_LOGGER.debug("###########################################################################################################################\n");
+            LOGGER.debug("Single Level Report Generation Process has taken : '" + duration + "' milli-seconds");
+            LOGGER.debug("---------------------------------------- ||| SINGLE LEVEL REPORT CONTROLLER END ||| ----------------------------------------");
+            LOGGER.debug("###########################################################################################################################\n");
         }
     }
 
@@ -1231,7 +1263,6 @@ public class ExportBOM {
 //
 //        return allSelectableAttributes;
 //    }
-
     @ResponseBody
     @GetMapping(value = "/v1/ln/items/nightly/dw-enovia", produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<Object> dwToEnoviaItemUpdateNightly() {
@@ -1240,13 +1271,14 @@ public class ExportBOM {
         String buildResponse = "";
         try {
             EnoviaNightlyUpdateAction action = new EnoviaNightlyUpdateAction();
+            String enoviaNightlyUpdateActionResult = action.EnoviaNightlyUpdateAction();
             buildResponse = responseBuilder
-                    .setData("Successfully transferred dw item update to ENOVIA")
+                    .setData(enoviaNightlyUpdateActionResult)
                     .setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.OK)
                     .buildResponse();
             return new ResponseEntity<>(buildResponse, HttpStatus.OK);
         } catch (Exception e) {
-            EXPORT_BOM_LOGGER.error("Error: " + e.getMessage());
+            LOGGER.error("Error: " + e.getMessage());
             buildResponse = responseBuilder
                     .addErrorMessage("Error: " + e.getMessage())
                     .setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED)
@@ -1255,11 +1287,11 @@ public class ExportBOM {
         } finally {
             Instant endTime = Instant.now();
             Duration timeTaken = Duration.between(startTime, endTime);
-            EXPORT_BOM_LOGGER.info("Time taken for DW-Enovia Item Update Service : " + timeTaken.toMillis());
+            LOGGER.info("Time taken for DW-Enovia Item Update Service : " + timeTaken.toMillis());
         }
     }
 
-//    @ResponseBody
+    //    @ResponseBody
 //    @PostMapping(value = "/v1/ln/transfer/listedBom", produces = {MediaType.APPLICATION_JSON_VALUE}, consumes = {MediaType.APPLICATION_JSON_VALUE})
 //    public ResponseEntity<Object> listedItemAndBOMTransfer(@RequestBody LNTransferRequestModel itemTransferModel) throws Exception {
 //        LNTransferAction lNTransferAction = new LNTransferAction();
@@ -1294,15 +1326,15 @@ public class ExportBOM {
 //            buildResponse = responseBuilder.setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.OK).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.OK);
 //        } catch (IllegalArgumentException ex) {
-//            EXPORT_BOM_LOGGER.error(ex);
+//            LOGGER.error(ex);
 //            buildResponse = responseBuilder.addErrorMessage(ex.getMessage()).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.BAD_REQUEST);
 //        } catch (ConnectException ex) {
-//            EXPORT_BOM_LOGGER.error(ex);
+//            LOGGER.error(ex);
 //            buildResponse = responseBuilder.addErrorMessage(ex.getMessage()).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 //        } catch (Exception ex) {
-//            EXPORT_BOM_LOGGER.error(ex);
+//            LOGGER.error(ex);
 //            buildResponse = responseBuilder.addErrorMessage(ex.getMessage()).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 //        }
@@ -1348,15 +1380,15 @@ public class ExportBOM {
 //            buildResponse = responseBuilder.setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.OK).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.OK);
 //        } catch (IllegalArgumentException ex) {
-//            EXPORT_BOM_LOGGER.error(ex);
+//            LOGGER.error(ex);
 //            buildResponse = responseBuilder.addErrorMessage(ex.getMessage()).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.BAD_REQUEST);
 //        } catch (ConnectException ex) {
-//            EXPORT_BOM_LOGGER.error(ex);
+//            LOGGER.error(ex);
 //            buildResponse = responseBuilder.addErrorMessage(ex.getMessage()).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 //        } catch (Exception ex) {
-//            EXPORT_BOM_LOGGER.error(ex);
+//            LOGGER.error(ex);
 //            buildResponse = responseBuilder.addErrorMessage(ex.getMessage()).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 //        }
@@ -1397,15 +1429,15 @@ public class ExportBOM {
 //            buildResponse = responseBuilder.setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.OK).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.OK);
 //        } catch (IllegalArgumentException ex) {
-//            EXPORT_BOM_LOGGER.error(ex);
+//            LOGGER.error(ex);
 //            buildResponse = responseBuilder.addErrorMessage(ex.getMessage()).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.BAD_REQUEST);
 //        } catch (ConnectException ex) {
-//            EXPORT_BOM_LOGGER.error(ex);
+//            LOGGER.error(ex);
 //            buildResponse = responseBuilder.addErrorMessage(ex.getMessage()).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 //        } catch (Exception ex) {
-//            EXPORT_BOM_LOGGER.error(ex);
+//            LOGGER.error(ex);
 //            buildResponse = responseBuilder.addErrorMessage(ex.getMessage()).setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
 //            return new ResponseEntity<>(buildResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 //        }
@@ -1438,6 +1470,102 @@ public class ExportBOM {
             this.userCredentialsModel = objectMapper.getObject();
         } catch (Exception exp) {
             throw exp;
+        }
+    }
+
+    public BackgroundResponse setInBackground(HimelliModel himelliModel) throws Exception {
+        BackgroundResponse backgroundResponse;
+
+        Context context = himelliModel.getContext();
+        HttpServletRequest httpRequest = himelliModel.getHttpRequest();
+        HttpServletResponse httpServletResponse = himelliModel.getHttpResponse();
+
+        removeContextAndHttpRequestAndResponse(himelliModel);
+
+        String serializedModel = new JSON().serialize(himelliModel);
+        backgroundResponse = asyncServiceCall(himelliMQUrl, serializedModel);
+        setContextAndHttpRequestAndResponse(himelliModel, context, httpRequest, httpServletResponse);
+        return backgroundResponse;
+    }
+
+    private void removeContextAndHttpRequestAndResponse(HimelliModel himelliModel) {
+        himelliModel.setContext(null);
+        himelliModel.setHttpRequest(null);
+        himelliModel.setHttpResponse(null);
+    }
+
+    private void setContextAndHttpRequestAndResponse(HimelliModel himelliModel, Context context, HttpServletRequest httpRequest, HttpServletResponse httpServletResponse) {
+        himelliModel.setContext(context);
+        himelliModel.setHttpRequest(httpRequest);
+        himelliModel.setHttpResponse(httpServletResponse);
+    }
+
+    public HttpEntity<ByteArrayResource> getHimelliReport(HttpServletRequest httpRequest, HttpServletResponse response, HimelliModel himelliModel, IResponse responseBuilder, String errorMessage, boolean isBackgroundProcess) {
+        String buildResponse;
+        try {
+            /*
+             * String user = httpRequest.getHeader("user"); String pass =
+             * httpRequest.getHeader("pass"); httpRequest.setAttribute("user",
+             * Base64.getDecoder().decode(user)); httpRequest.setAttribute("pass",
+             * Base64.getDecoder().decode(pass));
+             */
+            LOGGER.info("---------- Start generating bom report ----------");
+            ResponseEntity<?> valconBomJson = (ResponseEntity<?>) generateBomReport(httpRequest, response, himelliModel.getType(), himelliModel.getName(), himelliModel.getRev(),
+                    himelliModel.isLatest(), himelliModel.getObjectId(), himelliModel.getFormat(), himelliModel.getLang(), himelliModel.getPrimaryLang(), himelliModel.getSecondaryLang(), himelliModel.getRequestId(), himelliModel.getExpandLevel(),
+                    himelliModel.getRequester(), himelliModel.getPrintDrawing(), himelliModel.getAttrs(), himelliModel.isDownload(), himelliModel.getMainProjTitle(), himelliModel.getPsk(), himelliModel.getSubTitle(),
+                    himelliModel.getProduct(), himelliModel.getPrintDelivery(), himelliModel.getTreeView(), himelliModel.getDrawingType());
+            JSONParser parser = new JSONParser();
+            JSONObject json = (JSONObject) parser.parse(valconBomJson.getBody().toString());
+
+            Object objStatus = json.get(STATUS);
+            String status = objStatus.toString();
+
+            if (!(status.equals(OK))) {
+                Object Message = json.get(SYSTEM_ERRORS);
+                errorMessage = Message.toString();
+                errorMessage = errorMessage.replaceAll("[\\\"]", " ");
+            }
+
+            HimelliLogger.getInstance().printLog(RESPONSE_BODY + valconBomJson.getBody(), LogType.INFO);
+            HimelliLogger.getInstance().printLog(VALCON_RESPONSE_OBJECT + valconBomJson.toString(), LogType.INFO);
+
+            MultiLevelBOMStructureUtils multiLevelBOMStructureUtilsObj = new MultiLevelBOMStructureUtils(json, true);
+            json = multiLevelBOMStructureUtilsObj.modifyDataForHimeliExport();
+            HimelliLogger.getInstance().printLog(MOD_TREE_VIEW + json, LogType.INFO);
+            HimelliReportProcessor himelliReportProcessing = new HimelliReportProcessor(json);
+
+            //Remove attributes from report column which are not selected from UI
+            himelliReportUtility.removeAttr(himelliModel.getAttrs(), himelliReportProcessing);
+
+            // Drawing number is not included in request parameter or is set to false, not include in himelli export
+            if (NullOrEmptyChecker.isNullOrEmpty(himelliModel.getDrawingNumber()) || !Boolean.parseBoolean(himelliModel.getDrawingNumber())) {
+                himelliReportProcessing.addToNotIncludedAttributes(DWG, DRAWING_NUMBER);
+            }
+            LOGGER.info("---------- End generating bom report ----------");
+            byte[] himelliReport = himelliReportProcessing.himelliDataProcessing();
+            // Save file for large structure report
+            if (isBackgroundProcess) {
+                LOGGER.info("---------- Saving generating bom report ----------");
+                himelliReportUtility.createAndSaveFile(himelliModel, himelliReport);
+                LOGGER.info("---------- Sending generating bom report ----------");
+                himelliReportUtility.prepareToSendMail(himelliModel.getReceiverEmail(), himelliModel);
+            }
+
+            //Build text file as response for small structure report
+            HttpHeaders header = new HttpHeaders();
+            header.set(HttpHeaders.CONTENT_TYPE, TEXT_PLAIN);
+            header.set(HttpHeaders.CONTENT_DISPOSITION, ATTACHMENT_FILENAME + himelliModel.getRptFileName());
+            return new HttpEntity<>(new ByteArrayResource(himelliReport), header);
+        } catch (Exception e) {
+            HttpHeaders header = new HttpHeaders();
+            header.set(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON);
+            if (NullOrEmptyChecker.isNullOrEmpty(errorMessage)) {
+                errorMessage = Constants.CONTEXT_EXCEPTION;
+            }
+            LOGGER.error(errorMessage);
+            buildResponse = responseBuilder.addErrorMessage(errorMessage + COULD_NOT_GENERATE_HIMELLI_FORMAT_DATA)
+                    .setStatus(com.bjit.common.rest.app.service.payload.common_response.Status.FAILED).buildResponse();
+            return new HttpEntity<>(new ByteArrayResource(buildResponse.getBytes()), header);
         }
     }
 }

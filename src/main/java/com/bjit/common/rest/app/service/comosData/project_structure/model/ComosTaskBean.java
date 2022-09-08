@@ -99,4 +99,36 @@ public class ComosTaskBean {
     @SerializedName("ComosActivityUID")
     @JsonProperty("ComosActivityUID")
     private String comosActivityUID;
+
+    @SerializedName("baselineStartDate")
+    @JsonProperty("baselineStartDate")
+    private String baseLineStartDate;
+
+    @SerializedName("baselineEndDate")
+    @JsonProperty("baselineEndDate")
+    private String baseLineEndDate;
+
+    @SerializedName("plannedStartDate")
+    @JsonProperty("plannedStartDate")
+    private String plannedStartDate;
+
+    @SerializedName("plannedEndDate")
+    @JsonProperty("plannedEndDate")
+    private String plannedEndDate;
+
+    @SerializedName("actualStartDate")
+    @JsonProperty("actualStartDate")
+    private String actualStartDate;
+
+    @SerializedName("actualEndDate")
+    @JsonProperty("actualEndDate")
+    private String actualEndDate;
+
+    @SerializedName("lastModifiedInTable")
+    @JsonProperty("lastModifiedInTable")
+    private String lastModifiedInTable;
+
+    @SerializedName("plannedDeliveryDate")
+    @JsonProperty("plannedDeliveryDate")
+    private String plannedDeliveryDate;
 }

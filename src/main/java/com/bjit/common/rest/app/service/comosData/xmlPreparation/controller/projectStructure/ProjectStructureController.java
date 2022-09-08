@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestController
 @Validated
@@ -63,7 +65,14 @@ public class ProjectStructureController {
             String buildResponse = responseBuilder.setData(responseMessageFormaterBean).setStatus(Status.OK).buildResponse();
             return buildResponse;
         } catch (Exception ex) {
-            throw new ProjectStructureException(ex.getMessage(), requestData.getProjectStructureRequestData());
+            Pattern pattern = Pattern.compile(".*ProjectStructureException: (.*).*");
+
+            Matcher matcher = pattern.matcher(ex.getMessage());
+            String errorMessage="";
+            while (matcher.find()) {
+                errorMessage=matcher.group(1);
+            }
+            throw new ProjectStructureException(errorMessage, requestData.getProjectStructureRequestData());
         }
     }
 

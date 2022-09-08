@@ -219,12 +219,14 @@
                 <attribute>
                     <source_name>project</source_name>
                     <destination_name>project</destination_name>
+                    <!--<fixed_value>PE_TESTING_CONFIDENTIAL</fixed_value>-->
                     <fixed_value>PM_HEBO_CONFIDENTIAL</fixed_value>
                     <data-type>String</data-type>
                 </attribute>           			
                 <attribute>
                     <source_name>organization</source_name>
                     <destination_name>organization</destination_name>
+                    <!--<fixed_value>PE_VAL_TESTING_CONFIDENTIAL</fixed_value>-->
                     <fixed_value>PM_VAL_HEBO_CONFIDENTIAL</fixed_value>
                     <data-type>String</data-type>
                 </attribute>
@@ -377,12 +379,14 @@
                 <attribute>
                     <source_name>project</source_name>
                     <destination_name>project</destination_name>
+                    <!--<fixed_value>PE_TESTING_CONFIDENTIAL</fixed_value>-->
                     <fixed_value>PM_HEBO_CONFIDENTIAL</fixed_value>
                     <data-type>String</data-type>
                 </attribute>           			
                 <attribute>
                     <source_name>organization</source_name>
                     <destination_name>organization</destination_name>
+                    <!--<fixed_value>PE_VAL_TESTING_CONFIDENTIAL</fixed_value>-->
                     <fixed_value>PM_VAL_HEBO_CONFIDENTIAL</fixed_value>
                     <data-type>String</data-type>
                 </attribute>
@@ -426,6 +430,62 @@
                     <source_name>ComosActivityUID</source_name>
                     <destination_name>PRJ_ComosActivityUID</destination_name>
                     <data-type>String</data-type>
+                </attribute>
+                <attribute>
+                    <source_name>lastModifiedInTable</source_name>
+                    <destination_name>modified</destination_name>
+                    <data-type>Date</data-type>
+                    <data-date-format>yyyy-MM-dd</data-date-format>
+                    <date-format>MM/dd/yy</date-format>
+                </attribute>
+                <attribute>
+                    <source_name>plannedDeliveryDate</source_name>
+                    <destination_name>Task Estimated Finish Date</destination_name>
+                    <data-type>Date</data-type>
+                    <data-date-format>yyyy-MM-dd</data-date-format>
+                    <date-format>MM/dd/yy</date-format>
+                </attribute>
+                <attribute>
+                    <source_name>baselineStartDate</source_name>
+                    <destination_name>Baseline Current Start Date</destination_name>
+                    <data-type>Date</data-type>
+                    <data-date-format>yyyy-MM-dd</data-date-format>
+                    <date-format>MM/dd/yy</date-format>
+                </attribute>
+                <attribute>
+                    <source_name>baselineEndDate</source_name>
+                    <destination_name>Baseline Current End Date</destination_name>
+                    <data-type>Date</data-type>
+                    <data-date-format>yyyy-MM-dd</data-date-format>
+                    <date-format>MM/dd/yy</date-format>
+                </attribute>
+                <attribute>
+                    <source_name>plannedStartDate</source_name>
+                    <destination_name>Task Estimated Start Date</destination_name>
+                    <data-type>Date</data-type>
+                    <data-date-format>yyyy-MM-dd</data-date-format>
+                    <date-format>MM/dd/yy</date-format>
+                </attribute>
+                <attribute>
+                    <source_name>plannedEndDate</source_name>
+                    <destination_name>Task Estimated Finish Date</destination_name>
+                    <data-type>Date</data-type>
+                    <data-date-format>yyyy-MM-dd</data-date-format>
+                    <date-format>MM/dd/yy</date-format>
+                </attribute>
+                <attribute>
+                    <source_name>actualStartDate</source_name>
+                    <destination_name>Task Actual Start Date</destination_name>
+                    <data-type>Date</data-type>
+                    <data-date-format>yyyy-MM-dd</data-date-format>
+                    <date-format>MM/dd/yy</date-format>
+                </attribute>
+                <attribute>
+                    <source_name>actualEndDate</source_name>
+                    <destination_name>Task Actual Finish Date</destination_name>
+                    <data-type>Date</data-type>
+                    <data-date-format>yyyy-MM-dd</data-date-format>
+                    <date-format>MM/dd/yy</date-format>
                 </attribute>
             </attributes>
         </object>

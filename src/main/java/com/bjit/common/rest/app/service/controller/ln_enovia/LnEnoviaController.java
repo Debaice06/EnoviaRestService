@@ -66,11 +66,17 @@ public class LnEnoviaController {
             List<LNCostData> costData = lnCostService.getCostData(startDate, "", "");
             if (costData.size() > 0) {
                 response = lnCostService.updateCostData(costData);
-                response.forEach(item -> {
-                    items.append(item);
-                    items.append(",");
-                });
-                items.deleteCharAt(items.lastIndexOf(","));
+                if (response.size() < 1) {
+                    LN_ENOVIA_CONTROLLER.info("No Cost Data Found");
+                    buildResponse = responseBuilder.setStatus(Status.OK).setData("No Cost Data Found").buildResponse();
+                    return new ResponseEntity<>(buildResponse, HttpStatus.OK);
+                } else {
+                    response.forEach(item -> {
+                        items.append(item);
+                        items.append(",");
+                    });
+                    items.deleteCharAt(items.lastIndexOf(","));
+                }
             } else {
                 LN_ENOVIA_CONTROLLER.info("No Cost Data Found");
                 buildResponse = responseBuilder.setStatus(Status.OK).setData("No Cost Data Found").buildResponse();
@@ -104,17 +110,20 @@ public class LnEnoviaController {
         List<String> response;
         StringBuilder items = new StringBuilder();
         try {
-
             List<LNCostData> costData = lnCostService.getCostData("", itemId, "byItem");
             if (costData.size() > 0) {
-
                 response = lnCostService.updateCostData(costData);
-
-                response.forEach(item -> {
-                    items.append(item);
-                    items.append(",");
-                });
-                items.deleteCharAt(items.lastIndexOf(","));
+                if (response.size() < 1) {
+                    LN_ENOVIA_CONTROLLER.info("No Cost Data Found");
+                    buildResponse = responseBuilder.setStatus(Status.OK).setData("No Cost Data Found").buildResponse();
+                    return new ResponseEntity<>(buildResponse, HttpStatus.OK);
+                } else {
+                    response.forEach(item -> {
+                        items.append(item);
+                        items.append(",");
+                    });
+                    items.deleteCharAt(items.lastIndexOf(","));
+                }
             } else {
                 LN_ENOVIA_CONTROLLER.info("No Cost Data Found");
                 buildResponse = responseBuilder.setStatus(Status.OK).setData("No Cost Data Found").buildResponse();
